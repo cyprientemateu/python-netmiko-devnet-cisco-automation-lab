@@ -1,4 +1,6 @@
-# 📘 NetDevOps Automation Project (Netmiko + Cisco IOS-XE)
+# 📘 🚀 NetDevOps Automation Framework
+
+Production-style Cisco IOS-XE network automation using Python, Netmiko, compliance validation, drift detection, remediation, and reporting.
 
 ## 🧭 Project Overview
 
@@ -44,7 +46,19 @@ It has evolved from simple SSH command execution into a full automation framewor
 
 ## 🏗 Architecture
 
-Connect → Collect State → Compare → Validate → Remediate → Report
+```text
+Connect
+   ↓
+Collect State
+   ↓
+Compare Desired vs Actual
+   ↓
+Compliance Validation
+   ↓
+Remediation
+   ↓
+Reporting
+```
 
 ---
 
@@ -61,31 +75,24 @@ Connect → Collect State → Compare → Validate → Remediate → Report
 
 ## 📁 Project Structure
 
+```text
 python-netmiko-devnet-cisco/
 │
 ├── backups/
-│
 ├── configs/
-│
 ├── docs/
-│   ├── NETDEVOPS_DOCUMENTATION.md
-│
 ├── inventory/
-│
 ├── reports/
-│   ├── html/
-│   └── json/
-│
 ├── scripts/
-│
 ├── templates/
-│
 ├── tests/
+├── .github/workflows/
 │
-├── .gitignore
-├── requirements.txt
 ├── README.md
+├── requirements.txt
+├── .gitignore
 └── LICENSE
+```
 
 ---
 
@@ -110,6 +117,21 @@ python-netmiko-devnet-cisco/
 - Generates:
     - JSON report (machine-readable)
     - HTML dashboard (visual report)
+
+---
+
+## ✅ Current Capabilities
+
+- Multi-interface configuration
+- Routed interface automation
+- Drift detection
+- Compliance validation
+- Automated remediation
+- Backup generation
+- HTML reporting dashboard
+- JSON reporting
+- Idempotent execution
+- GitHub CI pipeline integration
 
 ---
 
@@ -156,6 +178,10 @@ HTML Report: reports/html/report_xxx.html
 
 ## 🚀 Future Improvements
 
+- Environment variable secret management
+- REST API integration
+- Scheduled compliance audits
+- Intent-based networking
 - YAML/CSV inventory
 - Multi-device orchestration
 - CI/CD pipeline

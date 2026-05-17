@@ -19,8 +19,8 @@ devices = [
     {
         "device_type": "cisco_xe",
         "host": "devnetsandboxiosxec9k.cisco.com",
-        "username": "cyprien.temateu",
-        "password": "_02Flsg2NrA_B",
+        "username": "YOUR_USERNAME",
+        "password": "YOUR_PASSWORD",
     }
 ]
 

@@ -1,2 +1,6 @@
 netmiko
 textfsm
+pyyaml
+jinja2
+paramiko
+rich
