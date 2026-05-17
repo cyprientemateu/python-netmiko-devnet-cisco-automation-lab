@@ -1,0 +1,19 @@
+# Terraform
+*.tfstate
+*.tfstate.backup
+
+# Secrets
+.env
+*.pem
+venv/
+
+# Python
+__pycache__/
+
+# Docs not for GitHub
+backups/
+reports/
+*.json
+*.html
+PLAN_README.md
+README_ORIGINAL.md
