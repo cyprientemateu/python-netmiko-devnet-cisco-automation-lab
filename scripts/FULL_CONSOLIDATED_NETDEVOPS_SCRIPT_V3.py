@@ -1,0 +1,372 @@
+from netmiko import ConnectHandler
+from datetime import datetime
+import json
+import difflib
+import os
+from load_inventory import load_devices, load_interfaces
+
+# =========================
+# CREATE PROJECT FOLDERS
+# =========================
+os.makedirs("backups", exist_ok=True)
+os.makedirs("reports/json", exist_ok=True)
+os.makedirs("reports/html", exist_ok=True)
+
+# =========================
+# 1. LOAD INVENTORY
+# =========================
+devices    = load_devices()
+interfaces = load_interfaces()
+
+# =========================
+# 2. BUILD EXPECTED CONFIG LINES
+#    Replaces hardcoded desired_config from V2.
+#    Now driven entirely by interfaces.yml.
+# =========================
+def build_expected_lines(intf):
+    """
+    Builds the list of sub-commands we expect to find
+    inside the interface block on the device.
+
+    Rules:
+    - No leading spaces: we normalize both sides before comparing.
+    - No interface header line: extract_interface_block strips it.
+    - No 'no shutdown': Cisco IOS omits this from running-config
+      when an interface is up — it is the default and invisible.
+      We only check for 'shutdown' when the interface should be down.
+    """
+    lines = []
+    lines.append(f"description {intf['description']}")
+
+    if intf.get("routed"):
+        lines.append("no switchport")
+        lines.append(f"ip address {intf['ip']} {intf['mask']}")
+
+    if not intf.get("enabled"):
+        lines.append("shutdown")
+
+    return lines
+
+# =========================
+# 3. CONNECT FUNCTION
+# =========================
+def connect(device):
+    print(f"\nConnecting to {device['host']}...")
+    return ConnectHandler(**device)
+
+# =========================
+# 4. GET RUNNING CONFIG
+# =========================
+def get_running_config(conn):
+    return conn.send_command("show running-config")
+
+# =========================
+# 5. EXTRACT INTERFACE BLOCK
+#    Fixed from V2.
+#    V2 compared expected lines against the ENTIRE
+#    running config (thousands of lines) which caused
+#    every interface to always show as DRIFT.
+#    V3 extracts only the relevant interface block
+#    before comparing.
+# =========================
+def extract_interface_block(running_config, interface_name):
+    """
+    Extracts sub-command lines for a specific interface
+    from the full running config.
+
+    - Skips the interface header line itself.
+    - Strips leading/trailing whitespace from each line
+      so comparison with expected lines is normalized.
+    - Stops at the next interface block or '!' marker.
+    """
+    lines    = running_config.splitlines()
+    block    = []
+    in_block = False
+
+    for line in lines:
+
+        if line.strip().lower() == f"interface {interface_name.lower()}":
+            in_block = True
+            continue  # skip the header line itself
+
+        if in_block:
+            if line.startswith("interface ") or line.strip() == "!":
+                break
+            if line.strip():
+                block.append(line.strip())  # normalize whitespace
+
+    return block
+
+# =========================
+# 6. DIFF ENGINE (FIXED)
+#    V2 diffed expected_lines vs ALL actual_lines.
+#    V3 diffs expected_lines vs extracted interface block only.
+#    Returns expected, actual, and diff per interface.
+# =========================
+def diff_configs(interfaces, running_config):
+    """
+    For each interface, checks whether all expected lines
+    are present in the actual device block.
+
+    Uses subset logic — not exact match — because:
+    - Cisco adds lines we don't control (negotiation auto,
+      spanning-tree, etc.)
+    - An exact diff would always show DRIFT due to those extras.
+    - We only care that OUR desired lines are present.
+    """
+    diff_report = {}
+
+    for intf in interfaces:
+
+        name     = intf["interface"]
+        expected = build_expected_lines(intf)
+        actual   = extract_interface_block(running_config, name)
+
+        # Lines we expect that are missing from the device
+        missing = [
+            line for line in expected
+            if line not in actual
+        ]
+
+        # Full unified diff kept for the HTML report display
+        diff = list(
+            difflib.unified_diff(
+                expected,
+                actual,
+                fromfile="desired",
+                tofile="actual",
+                lineterm=""
+            )
+        )
+
+        diff_report[name] = {
+            "expected": expected,
+            "actual":   actual,
+            "missing":  missing,
+            "diff":     diff
+        }
+
+    return diff_report
+
+# =========================
+# 7. COMPLIANCE ENGINE
+#    V3 fix: compliant when no expected lines are missing,
+#    not when the full diff is empty.
+#    This correctly handles Cisco extra lines.
+# =========================
+def compliance_check(diff_report):
+
+    results = {}
+
+    for intf, data in diff_report.items():
+
+        if not data["missing"]:
+            results[intf] = "COMPLIANT"
+        else:
+            results[intf] = "DRIFT"
+
+    return results
+
+# =========================
+# 8. REMEDIATION ENGINE (FIXED)
+#    V2 only pushed "no shutdown" for any DRIFT interface.
+#    V3 pushes the full desired config — description,
+#    routed/switchport mode, ip address, and shutdown state.
+# =========================
+def remediate(conn, compliance, interfaces):
+
+    for intf in interfaces:
+
+        name   = intf["interface"]
+        status = compliance.get(name)
+
+        if status == "DRIFT":
+
+            print(f"\n[REMEDIATING] {name}...")
+
+            cfg = [f"interface {name}"]
+            cfg.append(f"description {intf['description']}")
+
+            if intf.get("routed"):
+                cfg.append("no switchport")
+                cfg.append(
+                    f"ip address {intf['ip']} {intf['mask']}"
+                )
+            else:
+                cfg.append("switchport")
+
+            if intf.get("enabled"):
+                cfg.append("no shutdown")
+            else:
+                cfg.append("shutdown")
+
+            output = conn.send_config_set(cfg)
+            print(output)
+            print(f"[REMEDIATED] {name} ✔")
+
+# =========================
+# 9. HTML REPORT GENERATOR (ENHANCED)
+#    V2 showed only the compliance status and raw diff.
+#    V3 shows expected config, actual config, and
+#    color-coded diff side by side per interface.
+# =========================
+def generate_html_report(compliance, diff_report, device_host, filename):
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    html = f"""
+    <html>
+    <head>
+        <title>NetDevOps Compliance Report</title>
+        <style>
+            body      {{ font-family: Arial; margin: 40px;
+                         background: #f9f9f9; }}
+            h1        {{ color: #333; }}
+            h2        {{ color: #555; font-size: 14px; }}
+            h3        {{ margin-bottom: 4px; }}
+            .compliant {{ color: green; }}
+            .drift     {{ color: red; }}
+            .section  {{ background: white; border: 1px solid #ddd;
+                         border-radius: 6px; padding: 16px;
+                         margin-bottom: 20px; }}
+            pre       {{ background: #f4f4f4; padding: 10px;
+                         border-radius: 4px; font-size: 13px; }}
+            .add      {{ color: green; }}
+            .rem      {{ color: red; }}
+        </style>
+    </head>
+    <body>
+    <h1>NetDevOps Compliance Report</h1>
+    <h2>Device: {device_host} &nbsp;|&nbsp; Generated: {timestamp}</h2>
+    <hr>
+    """
+
+    for intf, status in compliance.items():
+
+        css  = "compliant" if status == "COMPLIANT" else "drift"
+        data = diff_report[intf]
+
+        html += f"<div class='section'>"
+        html += f"<h3 class='{css}'>[{status}] {intf}</h3>"
+
+        html += "<b>Expected (desired state):</b><pre>"
+        for line in data["expected"]:
+            html += line + "\n"
+        html += "</pre>"
+
+        html += "<b>Actual (on device):</b><pre>"
+        for line in data["actual"]:
+            html += line + "\n"
+        html += "</pre>"
+
+        if data["missing"]:
+            html += "<b>Missing lines (causing DRIFT):</b><pre>"
+            for line in data["missing"]:
+                html += f"<span class='rem'>- {line}</span>\n"
+            html += "</pre>"
+
+        html += "</div>"
+
+    html += "</body></html>"
+
+    with open(filename, "w") as f:
+        f.write(html)
+
+# =========================
+# 10. MAIN EXECUTION ENGINE
+# =========================
+def main():
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    for device in devices:
+
+        # -------------------------
+        # CONNECT
+        # -------------------------
+        conn = connect(device)
+
+        # -------------------------
+        # BACKUP
+        # -------------------------
+        print("\nCollecting running config...")
+        actual = get_running_config(conn)
+
+        backup_file = (
+            f"backups/backup_{device['host']}_{timestamp}.txt"
+        )
+
+        with open(backup_file, "w") as f:
+            f.write(actual)
+
+        print(f"Backup saved: {backup_file}")
+
+        # -------------------------
+        # DIFF ENGINE
+        # -------------------------
+        print("\nRunning diff engine...")
+        diff_report = diff_configs(interfaces, actual)
+
+        # -------------------------
+        # COMPLIANCE CHECK
+        # -------------------------
+        print("\nRunning compliance check...")
+        compliance = compliance_check(diff_report)
+
+        for intf, result in compliance.items():
+            tag = "[OK]" if result == "COMPLIANT" else "[DRIFT]"
+            print(f"  {tag} {intf} → {result}")
+
+        # -------------------------
+        # REMEDIATION
+        # -------------------------
+        print("\nRunning remediation...")
+        remediate(conn, compliance, interfaces)
+
+        # -------------------------
+        # REPORTS
+        # -------------------------
+        json_file = f"reports/json/report_{timestamp}.json"
+        html_file = f"reports/html/report_{timestamp}.html"
+
+        with open(json_file, "w") as f:
+            json.dump(
+                {
+                    "device":     device["host"],
+                    "timestamp":  timestamp,
+                    "compliance": compliance,
+                    "diff": {
+                        k: {
+                            "expected": v["expected"],
+                            "actual":   v["actual"],
+                            "missing":  v["missing"],
+                            "diff":     v["diff"]
+                        }
+                        for k, v in diff_report.items()
+                    }
+                },
+                f,
+                indent=4
+            )
+
+        generate_html_report(
+            compliance,
+            diff_report,
+            device["host"],
+            html_file
+        )
+
+        # -------------------------
+        # DISCONNECT
+        # -------------------------
+        conn.disconnect()
+
+        print(f"\n✔ DONE — {device['host']}")
+        print(f"  JSON Report: {json_file}")
+        print(f"  HTML Report: {html_file}")
+
+# =========================
+# RUN
+# =========================
+if __name__ == "__main__":
+    main()

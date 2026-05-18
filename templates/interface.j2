@@ -1,14 +1,13 @@
 interface {{ interface }}
-
-description {{ description }}
-
+ description {{ description }}
 {% if routed %}
-no switchport
-ip address {{ ip }} {{ mask }}
-{% endif %}
-
-{% if enabled %}
-no shutdown
+ no switchport
+ ip address {{ ip }} {{ mask }}
 {% else %}
-shutdown
+ switchport
+{% endif %}
+{% if enabled %}
+ no shutdown
+{% else %}
+ shutdown
 {% endif %}

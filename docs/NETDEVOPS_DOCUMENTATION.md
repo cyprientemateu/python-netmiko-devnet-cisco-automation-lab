@@ -93,9 +93,10 @@ no switchport
 ```
 
 **NOTES**
+
 Must use:
-no switchport
-before assigning IPs.
+- no switchport
+- before assigning IPs.
 
 ---
 
