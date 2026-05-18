@@ -1,0 +1,20 @@
+interfaces:
+
+  - interface: GigabitEthernet1/0/2
+    description: YAML LAB1
+    routed: true
+    ip: 10.10.10.1
+    mask: 255.255.255.0
+    enabled: true
+
+  - interface: GigabitEthernet1/0/3
+    description: YAML LAB2
+    routed: false
+    enabled: false
+
+  - interface: GigabitEthernet1/0/4
+    description: YAML LAB3
+    routed: true
+    ip: 10.20.40.1
+    mask: 255.255.255.0
+    enabled: true

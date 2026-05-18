@@ -1,0 +1,14 @@
+interface {{ interface }}
+
+description {{ description }}
+
+{% if routed %}
+no switchport
+ip address {{ ip }} {{ mask }}
+{% endif %}
+
+{% if enabled %}
+no shutdown
+{% else %}
+shutdown
+{% endif %}
