@@ -226,7 +226,7 @@ Running remediation...
 ✔ DONE — devnetsandboxiosxec9k.cisco.com
 ```
 
-📄 [View Drift Dashboard — Run 1](reports/html/report_20260518_081527.html)
+📄 [View Drift Dashboard — Run 1](images/screenshoots/DRIFT_DASHBOARD_V3.png)
 
 ---
 
@@ -245,7 +245,7 @@ Running remediation...
 ✔ DONE — devnetsandboxiosxec9k.cisco.com
 ```
 
-📄 [View Compliant Dashboard — Run 2](reports/html/report_20260518_082738.html)
+📄 [View Compliant Dashboard — Run 2](images/screenshoots/COMPLIANT_DASHBOARD_V3.png)
 
 ---
 
