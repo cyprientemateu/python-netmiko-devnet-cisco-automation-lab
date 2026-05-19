@@ -1,13 +1,15 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, compliance validation, drift detection, remediation, and reporting.
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Jinja2 templating, compliance validation, drift detection, remediation, and reporting.
 
 ## 🧭 Project Overview
 
 This project demonstrates real-world NetDevOps automation practices using Python and Netmiko against Cisco IOS-XE devices (DevNet Sandbox).
 
-It has evolved from simple SSH command execution into a full automation framework including:
+It has evolved from simple SSH command execution into a full data-driven automation framework including:
 
+- YAML-driven device and interface inventory
+- Jinja2 configuration templating
 - Interface provisioning
 - Multi-interface automation
 - Validation engine
@@ -25,19 +27,22 @@ It has evolved from simple SSH command execution into a full automation framewor
 - Support Layer-2 and Layer-3 modes
 - Assign IP addresses automatically
 - Enable/disable interfaces
+- Jinja2-templated config generation
+- YAML inventory-driven execution
 
 ### ✅ Safety & Reliability
 - Pre-change configuration backup
 - Post-change validation
 - Automatic rollback support
-- Idempotent execution (safe re-runs)
+- Idempotent execution (safe re-runs, proven)
 
 ### ✅ Compliance Engine
-- Desired state vs actual state comparison
-- Drift detection
-- Compliance classification
+- Desired state loaded from YAML (not hardcoded)
+- Interface block extraction from running config
+- Subset-based compliance check (avoids false positives)
+- Drift detection and classification
 
-### ️✅ Reporting System
+### ✅ Reporting System
 - JSON structured reports
 - HTML dashboard reports
 - Timestamped outputs
@@ -47,17 +52,25 @@ It has evolved from simple SSH command execution into a full automation framewor
 ## 🏗 Architecture
 
 ```text
-Connect
-   ↓
-Collect State
-   ↓
-Compare Desired vs Actual
-   ↓
-Compliance Validation
-   ↓
-Remediation
-   ↓
-Reporting
+.env (credentials)
+        ↓
+load_inventory.py
+  ├── load_devices()     → inventory/devices.yml
+  └── load_interfaces()  → inventory/interfaces.yml
+        ↓
+Jinja2 Template Engine  → templates/interface.j2
+        ↓
+Netmiko SSH Connection
+        ↓
+Backup Running Config
+        ↓
+Extract Interface Blocks
+        ↓
+Subset Compliance Check
+        ↓
+Remediate on DRIFT only
+        ↓
+JSON + HTML Reports
 ```
 
 ---
@@ -67,8 +80,12 @@ Reporting
 - Python 3.11
 - Netmiko
 - Cisco IOS-XE (DevNet Sandbox)
+- Jinja2
+- PyYAML
+- python-dotenv
 - TextFSM
 - HTML + JSON reporting
+- GitHub Actions (CI/CD)
 - PowerShell
 
 ---
@@ -82,14 +99,28 @@ python-netmiko-devnet-cisco/
 ├── configs/
 ├── docs/
 ├── inventory/
+│   ├── devices.yml
+│   └── interfaces.yml
 ├── reports/
+│   ├── html/
+│   └── json/
 ├── scripts/
+│   ├── cisco_connect.py
+│   ├── send_multi_command.py
+│   ├── send_config_set.py
+│   ├── multi_interfaces_validation_rollback.py
+│   ├── load_inventory.py
+│   ├── yaml_jinja2_netmiko.py
+│   └── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V3.py
 ├── templates/
+│   └── interface.j2
 ├── tests/
 ├── .github/workflows/
+│   └── netdevops-ci.yml
 │
 ├── README.md
 ├── requirements.txt
+├── .env
 ├── .gitignore
 └── LICENSE
 ```
@@ -98,22 +129,31 @@ python-netmiko-devnet-cisco/
 
 ## ⚙️ How It Works
 
-### 1️⃣ Backup Phase
-- Captures running configuration
-- Stores timestamped backup in /backups
+### 1️⃣ Inventory Loading
+- `load_devices()` reads `inventory/devices.yml`
+- `load_interfaces()` reads `inventory/interfaces.yml`
+- Credentials injected from `.env` at runtime
 
-### 2️⃣ Diff Engine
-- Compares desired state vs actual device state
+### 2️⃣ Backup Phase
+- Captures running configuration via `show running-config`
+- Stores timestamped backup in `/backups`
 
-### 3️⃣ Compliance Engine
-- Classifies:
+### 3️⃣ Diff Engine
+- Extracts per-interface config blocks from running config
+- Compares against desired state using subset logic
+- Avoids false positives from Cisco-generated default lines
+
+### 4️⃣ Compliance Engine
+- Classifies each interface as:
     - COMPLIANT
     - DRIFT
 
-### 4️⃣ Remediation
-- Fixes drift automatically when detected
+### 5️⃣ Remediation
+- Triggered only when DRIFT is detected
+- Pushes full desired config (description, IP, mode, state)
+- Skips interfaces already COMPLIANT (idempotent)
 
-### 5️⃣ Reporting
+### 6️⃣ Reporting
 - Generates:
     - JSON report (machine-readable)
     - HTML dashboard (visual report)
@@ -122,15 +162,18 @@ python-netmiko-devnet-cisco/
 
 ## ✅ Current Capabilities
 
+- YAML-driven device and interface inventory
+- Reusable inventory loader module
+- Jinja2 configuration templating
 - Multi-interface configuration
-- Routed interface automation
+- Routed (L3) and switched (L2) interface support
 - Drift detection
 - Compliance validation
-- Automated remediation
+- Automated remediation (full config push)
 - Backup generation
 - HTML reporting dashboard
 - JSON reporting
-- Idempotent execution
+- Idempotent execution (proven)
 - GitHub CI pipeline integration
 
 ---
@@ -146,23 +189,63 @@ Issue:
 Fix:
 ```bash
 no switchport
-```
-Then apply:
-```bash
 ip address X.X.X.X X.X.X.X
 ```
+
+### Diff Engine — Subset Check vs Exact Match
+
+Issue:
+- Exact diff comparison always returned DRIFT even after correct remediation
+- Cisco IOS adds default lines (`negotiation auto`, `spanning-tree`, etc.)
+- `no shutdown` is never written to running-config (it is the default)
+
+Fix:
+- Extract only the relevant interface block from running config
+- Use subset check: verify all expected lines are present, ignore extras
+- Exclude `no shutdown` from expected lines
 
 ---
 
 ## 📊 Example Output
 
-```bash
-[OK] GigabitEthernet1/0/2 → COMPLIANT
-[DRIFT] GigabitEthernet1/0/3 → REMEDIATED
+### Run 1 — Drift Detected and Remediated
 
-JSON Report: reports/json/report_xxx.json
-HTML Report: reports/html/report_xxx.html
+```bash
+Connecting to devnetsandboxiosxec9k.cisco.com...
+Collecting running config...
+Backup saved: backups/backup_devnetsandboxiosxec9k.cisco.com_20260518_081527.txt
+Running diff engine...
+Running compliance check...
+  [DRIFT] GigabitEthernet1/0/2 → DRIFT
+  [DRIFT] GigabitEthernet1/0/3 → DRIFT
+  [DRIFT] GigabitEthernet1/0/4 → DRIFT
+Running remediation...
+[REMEDIATED] GigabitEthernet1/0/2 ✔
+[REMEDIATED] GigabitEthernet1/0/3 ✔
+[REMEDIATED] GigabitEthernet1/0/4 ✔
+✔ DONE — devnetsandboxiosxec9k.cisco.com
 ```
+
+📄 [View Drift Dashboard — Run 1](reports/html/report_20260518_081527.html)
+
+---
+
+### Run 2 — Idempotency Confirmed (No Remediation)
+
+```bash
+Connecting to devnetsandboxiosxec9k.cisco.com...
+Collecting running config...
+Backup saved: backups/backup_devnetsandboxiosxec9k.cisco.com_20260518_082738.txt
+Running diff engine...
+Running compliance check...
+  [OK] GigabitEthernet1/0/2 → COMPLIANT
+  [OK] GigabitEthernet1/0/3 → COMPLIANT
+  [OK] GigabitEthernet1/0/4 → COMPLIANT
+Running remediation...
+✔ DONE — devnetsandboxiosxec9k.cisco.com
+```
+
+📄 [View Compliant Dashboard — Run 2](reports/html/report_20260518_082738.html)
 
 ---
 
@@ -173,20 +256,19 @@ HTML Report: reports/html/report_xxx.html
 - Avoid manual verification
 - Ensure idempotent automation
 - Use structured reporting
+- Externalize inventory and credentials
+- Separate concerns (inventory, templating, execution)
 
 ---
 
 ## 🚀 Future Improvements
 
-- Environment variable secret management
+- Logging framework (loguru / logging module)
 - REST API integration
 - Scheduled compliance audits
 - Intent-based networking
-- YAML/CSV inventory
 - Multi-device orchestration
-- CI/CD pipeline
 - API dashboard
-- Jinja2 templating
 
 ---
 
@@ -197,7 +279,9 @@ This project demonstrates:
 - Real-world network automation design
 - Infrastructure as Code thinking
 - Validation-first engineering approach
+- Data-driven automation (YAML + Jinja2)
 - Scalable automation architecture
+- Idempotent execution model
 
 ---
 

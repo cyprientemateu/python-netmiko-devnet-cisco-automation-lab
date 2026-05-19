@@ -1,20 +1,78 @@
+# =========================
 # Terraform
+# =========================
 *.tfstate
 *.tfstate.backup
+.terraform/
 
-# Secrets
+# =========================
+# Secrets / Credentials
+# =========================
 .env
 *.pem
+*.key
+
+# =========================
+# Python Virtual Environments
+# =========================
 venv/
+.venv/
 
-# Python
+# =========================
+# Python Cache
+# =========================
 __pycache__/
+*.pyc
 
-# Docs not for GitHub
+# =========================
+# Generated Runtime Files
+# =========================
 backups/
 reports/
-*.json
-*.html
+logs/
+
+# Generated configs
+configs/generated/
+
+# =========================
+# Log Files
+# =========================
+*.log
+
+# =========================
+# Sensitive Inventory
+# =========================
+inventory/devices.example.yml
+
+# =========================
+# Temporary / Copy Files
+# =========================
+*copy.py
+* copy.py
+*.bak
+
+# =========================
+# OS / Editor Files
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Documentation NOT Intended
+# For Public GitHub Display
+# =========================
 PLAN_README.md
 README_ORIGINAL.md
-*copy.py
+
+# =========================
+# Optional Local Notes
+# =========================
+Session.md
+MEMORY.md
