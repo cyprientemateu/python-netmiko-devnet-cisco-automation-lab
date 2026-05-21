@@ -43,6 +43,7 @@ configs/generated/
 # Sensitive Inventory
 # =========================
 inventory/devices.example.yml
+inventory/interfaces.example.yml
 
 # =========================
 # Temporary / Copy Files
