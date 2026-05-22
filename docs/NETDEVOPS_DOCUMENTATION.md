@@ -35,6 +35,9 @@ The project evolved progressively from manual SSH automation into a scalable aut
 - compliance validation
 - drift detection
 - automated remediation
+- structured logging
+- rendered config archival
+- dry-run mode
 - JSON reporting
 - HTML dashboard generation
 - idempotent automation logic
@@ -676,10 +679,27 @@ python scripts/FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 ```text
 python-netmiko-devnet-cisco/
 │
+├── archive/
+│   ├── README.md
+│   └── legacy_scripts/
+│       ├── cisco_connect.py
+│       ├── send_multi_command.py
+│       ├── send_config_set.py
+│       ├── multi_interfaces_validation_rollback.py
+│       ├── multi_interfaces_validation_rollback_backup_device_local.py
+│       ├── jinja2_interface_generator.py
+│       ├── load_inventory_V1.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V2.py
+│       └── NETDEVOPS_DOCUMENTATION_V1.md
 ├── backups/
 ├── configs/
 │   └── generated/
 ├── docs/
+│   ├── NETDEVOPS_DOCUMENTATION.md
+│   └── python_and_network_automation.docx
+├── images/
+│   └── screenshoots/
 ├── inventory/
 │   ├── devices.yml
 │   └── interfaces.yml
@@ -689,13 +709,9 @@ python-netmiko-devnet-cisco/
 │   ├── html/
 │   └── json/
 ├── scripts/
-│   ├── cisco_connect.py
-│   ├── send_multi_command.py
-│   ├── send_config_set.py
-│   ├── multi_interfaces_validation_rollback.py
 │   ├── load_inventory.py
 │   ├── logger.py
-│   ├── yaml_jinja2_netmiko.py
+│   ├── yaml_jinja2_netmiko_deployer.py
 │   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V3.py
 │   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V4.py
 │   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py

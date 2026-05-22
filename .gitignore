@@ -50,6 +50,8 @@ inventory/interfaces.example.yml
 # =========================
 *copy.py
 * copy.py
+*copy.md
+* copy.md
 *.bak
 
 # =========================

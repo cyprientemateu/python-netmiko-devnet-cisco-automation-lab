@@ -1,6 +1,6 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Jinja2 templating, compliance validation, drift detection, remediation, and reporting.
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Jinja2 templating, compliance validation, drift detection, remediation, structured logging, config archival, and dry-run mode.
 
 ## 🧭 Project Overview
 
@@ -15,6 +15,9 @@ It has evolved from simple SSH command execution into a full data-driven automat
 - Validation engine
 - Drift detection
 - Automatic remediation
+- Structured logging with audit trail
+- Rendered config archival before deployment
+- Dry-run mode for safe validation
 - Backup system
 - JSON + HTML reporting dashboard
 
@@ -46,6 +49,18 @@ It has evolved from simple SSH command execution into a full data-driven automat
 - JSON structured reports
 - HTML dashboard reports
 - Timestamped outputs
+- Execution mode stamped in every report
+
+### ✅ Observability
+- Structured logging via Python `logging` module
+- Simultaneous console and file output
+- Persistent audit trail in `logs/netdevops.log`
+- INFO / WARNING / ERROR log levels
+
+### ✅ Config Archival & Dry-Run
+- Jinja2-rendered configs saved to `configs/generated/` before deployment
+- `--dry-run` flag — validate and report without pushing changes
+- Execution mode (DRY-RUN / LIVE) visible in logs and reports
 
 ---
 
@@ -58,19 +73,19 @@ load_inventory.py
   ├── load_devices()     → inventory/devices.yml
   └── load_interfaces()  → inventory/interfaces.yml
         ↓
-Jinja2 Template Engine  → templates/interface.j2
+Backup Running Config     → backups/
         ↓
-Netmiko SSH Connection
-        ↓
-Backup Running Config
+Render via Jinja2         → configs/generated/
         ↓
 Extract Interface Blocks
         ↓
 Subset Compliance Check
         ↓
-Remediate on DRIFT only
+Remediate on DRIFT only   ← skipped in --dry-run
         ↓
-JSON + HTML Reports
+JSON + HTML Reports       → reports/
+        ↓
+Structured Logging        → logs/netdevops.log
 ```
 
 ---
@@ -97,10 +112,13 @@ python-netmiko-devnet-cisco/
 │
 ├── backups/
 ├── configs/
+│   └── generated/
 ├── docs/
 ├── inventory/
 │   ├── devices.yml
 │   └── interfaces.yml
+├── logs/
+│   └── netdevops.log
 ├── reports/
 │   ├── html/
 │   └── json/
@@ -110,13 +128,18 @@ python-netmiko-devnet-cisco/
 │   ├── send_config_set.py
 │   ├── multi_interfaces_validation_rollback.py
 │   ├── load_inventory.py
+│   ├── logger.py
 │   ├── yaml_jinja2_netmiko.py
-│   └── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V3.py
+│   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V3.py
+│   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V4.py
+│   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
+│   └── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 ├── templates/
 │   └── interface.j2
 ├── tests/
-├── .github/workflows/
-│   └── netdevops-ci.yml
+├── .github/
+│   └── workflows/
+│       └── netdevops-ci.yml
 │
 ├── README.md
 ├── requirements.txt
@@ -170,6 +193,9 @@ python-netmiko-devnet-cisco/
 - Drift detection
 - Compliance validation
 - Automated remediation (full config push)
+- Structured logging (console + file audit trail)
+- Rendered config archival (`configs/generated/`)
+- Dry-run mode (`--dry-run` flag)
 - Backup generation
 - HTML reporting dashboard
 - JSON reporting
@@ -208,44 +234,45 @@ Fix:
 
 ## 📊 Example Output
 
+### Dry-Run — Validate Only (No Changes Pushed)
+
+```bash
+2026-05-21 05:38:36 | INFO     | NetDevOps Framework V6 — DRY-RUN MODE
+2026-05-21 05:38:38 | INFO     | [OK]    GigabitEthernet1/0/2 → COMPLIANT
+2026-05-21 05:38:38 | INFO     | [OK]    GigabitEthernet1/0/3 → COMPLIANT
+2026-05-21 05:38:38 | INFO     | [OK]    GigabitEthernet1/0/4 → COMPLIANT
+2026-05-21 05:38:38 | WARNING  | DRY-RUN MODE — remediation skipped, no changes pushed
+```
+
+📄 [View Dry-Run Dashboard](reports/html/report_20260521_053836.html)
+
+---
+
 ### Run 1 — Drift Detected and Remediated
 
 ```bash
-Connecting to devnetsandboxiosxec9k.cisco.com...
-Collecting running config...
-Backup saved: backups/backup_devnetsandboxiosxec9k.cisco.com_20260518_081527.txt
-Running diff engine...
-Running compliance check...
-  [DRIFT] GigabitEthernet1/0/2 → DRIFT
-  [DRIFT] GigabitEthernet1/0/3 → DRIFT
-  [DRIFT] GigabitEthernet1/0/4 → DRIFT
-Running remediation...
-[REMEDIATED] GigabitEthernet1/0/2 ✔
-[REMEDIATED] GigabitEthernet1/0/3 ✔
-[REMEDIATED] GigabitEthernet1/0/4 ✔
-✔ DONE — devnetsandboxiosxec9k.cisco.com
+2026-05-18 22:22:30 | WARNING  | [DRIFT] GigabitEthernet1/0/2 → DRIFT
+2026-05-18 22:22:30 | WARNING  | [DRIFT] GigabitEthernet1/0/3 → DRIFT
+2026-05-18 22:22:30 | WARNING  | [DRIFT] GigabitEthernet1/0/4 → DRIFT
+2026-05-18 22:22:33 | INFO     | Remediation successful — GigabitEthernet1/0/2
+2026-05-18 22:22:34 | INFO     | Remediation successful — GigabitEthernet1/0/3
+2026-05-18 22:22:35 | INFO     | Remediation successful — GigabitEthernet1/0/4
 ```
 
-📄 [View Drift Dashboard — Run 1](images/screenshoots/DRIFT_DASHBOARD_V3.png)
+📄 [View Drift Dashboard — Run 1](reports/html/report_20260518_081527.html)
 
 ---
 
 ### Run 2 — Idempotency Confirmed (No Remediation)
 
 ```bash
-Connecting to devnetsandboxiosxec9k.cisco.com...
-Collecting running config...
-Backup saved: backups/backup_devnetsandboxiosxec9k.cisco.com_20260518_082738.txt
-Running diff engine...
-Running compliance check...
-  [OK] GigabitEthernet1/0/2 → COMPLIANT
-  [OK] GigabitEthernet1/0/3 → COMPLIANT
-  [OK] GigabitEthernet1/0/4 → COMPLIANT
-Running remediation...
-✔ DONE — devnetsandboxiosxec9k.cisco.com
+2026-05-18 22:30:30 | INFO     | [OK]    GigabitEthernet1/0/2 → COMPLIANT
+2026-05-18 22:30:30 | INFO     | [OK]    GigabitEthernet1/0/3 → COMPLIANT
+2026-05-18 22:30:30 | INFO     | [OK]    GigabitEthernet1/0/4 → COMPLIANT
+2026-05-18 22:30:30 | INFO     | All interfaces COMPLIANT — no remediation needed
 ```
 
-📄 [View Compliant Dashboard — Run 2](images/screenshoots/COMPLIANT_DASHBOARD_V3.png)
+📄 [View Compliant Dashboard — Run 2](reports/html/report_20260518_082738.html)
 
 ---
 
@@ -263,12 +290,14 @@ Running remediation...
 
 ## 🚀 Future Improvements
 
-- Logging framework (loguru / logging module)
-- REST API integration
-- Scheduled compliance audits
-- Intent-based networking
+- Modularization into `scripts/core/` (next)
+- Logging improvements (rotating logs, execution IDs, per-device logs)
+- YAML schema validation
 - Multi-device orchestration
-- API dashboard
+- RESTCONF integration
+- PyATS/Genie validation
+- Flask/FastAPI dashboard
+- Intent-based networking
 
 ---
 

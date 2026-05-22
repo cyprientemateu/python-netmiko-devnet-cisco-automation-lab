@@ -110,10 +110,27 @@ Structured Logging        → logs/netdevops.log
 ```text
 python-netmiko-devnet-cisco/
 │
+├── archive/
+│   ├── README.md
+│   └── legacy_scripts/
+│       ├── cisco_connect.py
+│       ├── send_multi_command.py
+│       ├── send_config_set.py
+│       ├── multi_interfaces_validation_rollback.py
+│       ├── multi_interfaces_validation_rollback_backup_device_local.py
+│       ├── jinja2_interface_generator.py
+│       ├── load_inventory_V1.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V2.py
+│       └── NETDEVOPS_DOCUMENTATION_V1.md
 ├── backups/
 ├── configs/
 │   └── generated/
 ├── docs/
+│   ├── NETDEVOPS_DOCUMENTATION.md
+│   └── python_and_network_automation.docx
+├── images/
+│   └── screenshoots/
 ├── inventory/
 │   ├── devices.yml
 │   └── interfaces.yml
@@ -123,13 +140,9 @@ python-netmiko-devnet-cisco/
 │   ├── html/
 │   └── json/
 ├── scripts/
-│   ├── cisco_connect.py
-│   ├── send_multi_command.py
-│   ├── send_config_set.py
-│   ├── multi_interfaces_validation_rollback.py
 │   ├── load_inventory.py
 │   ├── logger.py
-│   ├── yaml_jinja2_netmiko.py
+│   ├── yaml_jinja2_netmiko_deployer.py
 │   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V3.py
 │   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V4.py
 │   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
@@ -140,17 +153,6 @@ python-netmiko-devnet-cisco/
 ├── .github/
 │   └── workflows/
 │       └── netdevops-ci.yml
-│
-├── README.md
-├── requirements.txt
-├── .env
-├── .gitignore
-└── LICENSE
-```
-│   └── interface.j2
-├── tests/
-├── .github/workflows/
-│   └── netdevops-ci.yml
 │
 ├── README.md
 ├── requirements.txt
@@ -255,7 +257,7 @@ Fix:
 2026-05-21 05:38:38 | WARNING  | DRY-RUN MODE — remediation skipped, no changes pushed
 ```
 
-📄 [View Dry-Run Dashboard](reports/html/report_20260521_053836.html)
+📄 [View Dry-Run Dashboard](images/screenshoots/Screenshot 2026-05-21 115924_DRY_RUN_V6)
 
 ---
 
@@ -270,7 +272,7 @@ Fix:
 2026-05-18 22:22:35 | INFO     | Remediation successful — GigabitEthernet1/0/4
 ```
 
-📄 [View Drift Dashboard — Run 1](reports/html/report_20260518_081527.html)
+📄 [View Drift Dashboard — Run 1](images/screenshoots/DRIFT_DASHBOARD_V3.png)
 
 ---
 
@@ -283,7 +285,7 @@ Fix:
 2026-05-18 22:30:30 | INFO     | All interfaces COMPLIANT — no remediation needed
 ```
 
-📄 [View Compliant Dashboard — Run 2](reports/html/report_20260518_082738.html)
+📄 [View Compliant Dashboard — Run 2](images/screenshoots/COMPLIANT_DASHBOARD_V3)
 
 ---
 
