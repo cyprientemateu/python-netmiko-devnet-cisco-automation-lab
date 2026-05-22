@@ -442,7 +442,7 @@ Running remediation...
 ✔ DONE — devnetsandboxiosxec9k.cisco.com
 ```
 
-📄 [View Drift Dashboard — Run 1](images/screenshoots/DRIFT_DASHBOARD_V3.png)
+📄 [View Drift Dashboard — Run 1](../images/screenshoots/DRIFT_DASHBOARD_V3.png)
 
 ---
 
@@ -461,7 +461,7 @@ Running remediation...
 ✔ DONE — devnetsandboxiosxec9k.cisco.com
 ```
 
-📄 [View Compliant Dashboard — Run 2](images/screenshoots/COMPLIANT_DASHBOARD_V3.png)
+📄 [View Compliant Dashboard — Run 2](../images/screenshoots/COMPLIANT_DASHBOARD_V3.png)
 
 The framework only acts when action is needed.
 This is the gold standard for production automation.
@@ -648,7 +648,7 @@ python scripts/FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 2026-05-21 05:38:38 | INFO     | HTML report saved — reports/html/report_20260521_053836.html
 ```
 
-📄 [View Dry-Run Dashboard](images/screenshoots/Screenshot 2026-05-21 115924_DRY_RUN_V6.png)
+📄 [View Dry-Run Dashboard](../images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
 
 ---
 

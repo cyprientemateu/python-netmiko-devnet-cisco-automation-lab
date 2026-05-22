@@ -257,7 +257,7 @@ Fix:
 2026-05-21 05:38:38 | WARNING  | DRY-RUN MODE — remediation skipped, no changes pushed
 ```
 
-📄 [View Dry-Run Dashboard](images/screenshoots/Screenshot 2026-05-21 115924_DRY_RUN_V6)
+📄 [View Dry-Run Dashboard](images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
 
 ---
 
@@ -285,7 +285,7 @@ Fix:
 2026-05-18 22:30:30 | INFO     | All interfaces COMPLIANT — no remediation needed
 ```
 
-📄 [View Compliant Dashboard — Run 2](images/screenshoots/COMPLIANT_DASHBOARD_V3)
+📄 [View Compliant Dashboard — Run 2](images/screenshoots/COMPLIANT_DASHBOARD_V3.png)
 
 ---
 
