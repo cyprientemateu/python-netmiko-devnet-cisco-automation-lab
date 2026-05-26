@@ -38,6 +38,7 @@ The project evolved progressively from manual SSH automation into a scalable aut
 - structured logging
 - rendered config archival
 - dry-run mode
+- modular `core/` architecture
 - JSON reporting
 - HTML dashboard generation
 - idempotent automation logic
@@ -652,6 +653,119 @@ python scripts/FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 
 ---
 
+# PHASE 10 — Modular Core Architecture (main.py)
+
+## Objective
+
+Refactor the monolithic V6 script into a fully modular,
+single-responsibility architecture using a `core/` package
+and a clean `main.py` orchestrator.
+
+## Features Implemented
+
+- `scripts/core/` package with 6 focused modules
+- `scripts/main.py` — pipeline orchestrator only
+- All business logic moved out of main script
+- Each module independently testable
+- `dry_run` passed as explicit parameter — no global state
+- All V3–V6 scripts moved to `archive/legacy_scripts/`
+
+## Module Breakdown
+
+| Module | Responsibility |
+|---|---|
+| `core/connection.py` | SSH connect, get running config |
+| `core/backup.py` | Save timestamped backup to disk |
+| `core/rendering.py` | Jinja2 rendering, save to configs/generated/ |
+| `core/compliance.py` | Build expected lines, extract interface block, diff, compliance check |
+| `core/remediation.py` | Push full desired config on DRIFT, dry-run aware |
+| `core/reporting.py` | Save JSON report, generate HTML dashboard |
+
+## main.py — Clean Orchestrator
+
+```python
+from core.connection  import connect, get_running_config
+from core.backup      import save_backup
+from core.rendering   import render_and_save_configs
+from core.compliance  import diff_configs, compliance_check
+from core.remediation import remediate
+from core.reporting   import save_json_report, generate_html_report
+```
+
+`main.py` contains zero business logic.
+It only orchestrates the pipeline and handles the device loop.
+
+## Updated Pipeline
+
+```text
+.env (credentials)
+        ↓
+load_inventory.py
+  ├── load_devices()     → inventory/devices.yml
+  └── load_interfaces()  → inventory/interfaces.yml
+        ↓
+core/connection.py        → SSH connect
+        ↓
+core/backup.py            → backups/
+        ↓
+core/rendering.py         → configs/generated/
+        ↓
+core/compliance.py        → diff + compliance check
+        ↓
+core/remediation.py       → remediate DRIFT (skipped in dry-run)
+        ↓
+core/reporting.py         → reports/json/ + reports/html/
+        ↓
+logs/netdevops.log        → audit trail
+```
+
+## Proven in Practice
+
+Both modes confirmed working after modularization:
+
+### Dry-Run
+
+```bash
+2026-05-21 21:37:48 | INFO     | NetDevOps Framework — DRY-RUN MODE
+2026-05-21 21:37:50 | INFO     | [OK]    GigabitEthernet1/0/2 → COMPLIANT
+2026-05-21 21:37:50 | INFO     | [OK]    GigabitEthernet1/0/3 → COMPLIANT
+2026-05-21 21:37:50 | INFO     | [OK]    GigabitEthernet1/0/4 → COMPLIANT
+2026-05-21 21:37:50 | WARNING  | DRY-RUN MODE — remediation skipped, no changes pushed
+2026-05-21 21:37:50 | INFO     | NetDevOps Framework — Execution Complete
+```
+
+### Live
+
+```bash
+2026-05-21 21:37:59 | INFO     | NetDevOps Framework — LIVE MODE
+2026-05-21 21:38:02 | INFO     | [OK]    GigabitEthernet1/0/2 → COMPLIANT
+2026-05-21 21:38:02 | INFO     | [OK]    GigabitEthernet1/0/3 → COMPLIANT
+2026-05-21 21:38:02 | INFO     | [OK]    GigabitEthernet1/0/4 → COMPLIANT
+2026-05-21 21:38:02 | INFO     | All interfaces COMPLIANT — no remediation needed
+2026-05-21 21:38:02 | INFO     | NetDevOps Framework — Execution Complete
+```
+
+## How to Run
+
+```bash
+# Validate only
+python scripts/main.py --dry-run
+
+# Full live execution
+python scripts/main.py
+```
+
+## Key Engineering Principle Applied
+
+> A script does one thing from top to bottom.
+> A framework has modules with single responsibilities
+> that are orchestrated by a clean entry point.
+
+This transition marks the point where the project moved
+from automation scripting to production software engineering.
+
+---
+
 # 📊 Current Capabilities
 
 ## Successfully Implemented
@@ -665,11 +779,11 @@ python scripts/FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 - Structured logging (console + file)
 - Rendered config archival (`configs/generated/`)
 - Dry-run mode (`--dry-run` flag)
+- Modular `core/` architecture (`main.py` + 6 focused modules)
 - HTML dashboard generation
 - JSON structured reporting
 - Local backup generation
 - Idempotent re-runs (proven)
-- Modular architecture
 - GitHub Actions CI/CD pipeline
 
 ---
@@ -691,6 +805,10 @@ python-netmiko-devnet-cisco/
 │       ├── load_inventory_V1.py
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT.py
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V2.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V3.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V4.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 │       └── NETDEVOPS_DOCUMENTATION_V1.md
 ├── backups/
 ├── configs/
@@ -709,13 +827,17 @@ python-netmiko-devnet-cisco/
 │   ├── html/
 │   └── json/
 ├── scripts/
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── connection.py
+│   │   ├── backup.py
+│   │   ├── rendering.py
+│   │   ├── compliance.py
+│   │   ├── remediation.py
+│   │   └── reporting.py
 │   ├── load_inventory.py
 │   ├── logger.py
-│   ├── yaml_jinja2_netmiko_deployer.py
-│   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V3.py
-│   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V4.py
-│   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
-│   └── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
+│   └── main.py
 ├── templates/
 │   └── interface.j2
 ├── tests/
@@ -755,7 +877,7 @@ This project follows core NetDevOps engineering principles:
 - No database-backed inventory yet
 - No scheduled compliance jobs yet
 - `tests/` directory empty — no automated test coverage yet
-- Monolithic script architecture — modularization into `core/` pending
+- Logging improvements pending (rotating logs, execution IDs, per-device logs)
 
 ---
 
@@ -763,16 +885,16 @@ This project follows core NetDevOps engineering principles:
 
 ## Short-Term
 
-- Modularization into `scripts/core/` (next)
 - Logging improvements (rotating logs, execution IDs, per-device logs)
 - YAML schema validation
+- Multi-device testing
 
 ## Mid-Term
 
-- Multi-device orchestration testing
 - RESTCONF integration
 - PyATS/Genie validation
 - CSV/Excel inventory support
+- Configuration archival
 
 ## Long-Term
 

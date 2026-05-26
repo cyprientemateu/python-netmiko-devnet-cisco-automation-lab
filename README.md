@@ -1,6 +1,6 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Jinja2 templating, compliance validation, drift detection, remediation, structured logging, config archival, and dry-run mode.
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Jinja2 templating, compliance validation, drift detection, remediation, structured logging, config archival, dry-run mode, and modular `core/` architecture.
 
 ## 🧭 Project Overview
 
@@ -122,6 +122,10 @@ python-netmiko-devnet-cisco/
 │       ├── load_inventory_V1.py
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT.py
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V2.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V3.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V4.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
+│       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 │       └── NETDEVOPS_DOCUMENTATION_V1.md
 ├── backups/
 ├── configs/
@@ -140,13 +144,17 @@ python-netmiko-devnet-cisco/
 │   ├── html/
 │   └── json/
 ├── scripts/
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── connection.py
+│   │   ├── backup.py
+│   │   ├── rendering.py
+│   │   ├── compliance.py
+│   │   ├── remediation.py
+│   │   └── reporting.py
 │   ├── load_inventory.py
 │   ├── logger.py
-│   ├── yaml_jinja2_netmiko_deployer.py
-│   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V3.py
-│   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V4.py
-│   ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
-│   └── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
+│   └── main.py
 ├── templates/
 │   └── interface.j2
 ├── tests/
@@ -209,6 +217,7 @@ python-netmiko-devnet-cisco/
 - Structured logging (console + file audit trail)
 - Rendered config archival (`configs/generated/`)
 - Dry-run mode (`--dry-run` flag)
+- Modular `core/` architecture (`main.py` + 6 focused modules)
 - Backup generation
 - HTML reporting dashboard
 - JSON reporting
@@ -250,14 +259,15 @@ Fix:
 ### Dry-Run — Validate Only (No Changes Pushed)
 
 ```bash
-2026-05-21 05:38:36 | INFO     | NetDevOps Framework V6 — DRY-RUN MODE
-2026-05-21 05:38:38 | INFO     | [OK]    GigabitEthernet1/0/2 → COMPLIANT
-2026-05-21 05:38:38 | INFO     | [OK]    GigabitEthernet1/0/3 → COMPLIANT
-2026-05-21 05:38:38 | INFO     | [OK]    GigabitEthernet1/0/4 → COMPLIANT
-2026-05-21 05:38:38 | WARNING  | DRY-RUN MODE — remediation skipped, no changes pushed
+2026-05-21 21:37:48 | INFO     | NetDevOps Framework — DRY-RUN MODE
+2026-05-21 21:37:50 | INFO     | [OK]    GigabitEthernet1/0/2 → COMPLIANT
+2026-05-21 21:37:50 | INFO     | [OK]    GigabitEthernet1/0/3 → COMPLIANT
+2026-05-21 21:37:50 | INFO     | [OK]    GigabitEthernet1/0/4 → COMPLIANT
+2026-05-21 21:37:50 | WARNING  | DRY-RUN MODE — remediation skipped, no changes pushed
+2026-05-21 21:37:50 | INFO     | NetDevOps Framework — Execution Complete
 ```
 
-📄 [View Dry-Run Dashboard](images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
+📄 [View Dry-Run Dashboard](/images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
 
 ---
 
@@ -279,10 +289,12 @@ Fix:
 ### Run 2 — Idempotency Confirmed (No Remediation)
 
 ```bash
-2026-05-18 22:30:30 | INFO     | [OK]    GigabitEthernet1/0/2 → COMPLIANT
-2026-05-18 22:30:30 | INFO     | [OK]    GigabitEthernet1/0/3 → COMPLIANT
-2026-05-18 22:30:30 | INFO     | [OK]    GigabitEthernet1/0/4 → COMPLIANT
-2026-05-18 22:30:30 | INFO     | All interfaces COMPLIANT — no remediation needed
+2026-05-21 21:37:59 | INFO     | NetDevOps Framework — LIVE MODE
+2026-05-21 21:38:02 | INFO     | [OK]    GigabitEthernet1/0/2 → COMPLIANT
+2026-05-21 21:38:02 | INFO     | [OK]    GigabitEthernet1/0/3 → COMPLIANT
+2026-05-21 21:38:02 | INFO     | [OK]    GigabitEthernet1/0/4 → COMPLIANT
+2026-05-21 21:38:02 | INFO     | All interfaces COMPLIANT — no remediation needed
+2026-05-21 21:38:02 | INFO     | NetDevOps Framework — Execution Complete
 ```
 
 📄 [View Compliant Dashboard — Run 2](images/screenshoots/COMPLIANT_DASHBOARD_V3.png)
@@ -303,7 +315,6 @@ Fix:
 
 ## 🚀 Future Improvements
 
-- Modularization into `scripts/core/` (next)
 - Logging improvements (rotating logs, execution IDs, per-device logs)
 - YAML schema validation
 - Multi-device orchestration
@@ -322,8 +333,9 @@ This project demonstrates:
 - Infrastructure as Code thinking
 - Validation-first engineering approach
 - Data-driven automation (YAML + Jinja2)
-- Scalable automation architecture
+- Scalable modular software architecture
 - Idempotent execution model
+- Production-grade observability (logging + dry-run)
 
 ---
 
