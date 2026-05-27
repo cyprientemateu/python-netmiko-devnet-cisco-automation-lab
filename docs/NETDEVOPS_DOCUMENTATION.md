@@ -31,11 +31,12 @@ The project evolved progressively from manual SSH automation into a scalable aut
 
 - interface provisioning
 - YAML-driven inventory
+- YAML schema validation (Pydantic)
 - Jinja2 configuration rendering
 - compliance validation
 - drift detection
 - automated remediation
-- structured logging
+- structured logging (rotating, execution IDs, per-device)
 - rendered config archival
 - dry-run mode
 - modular `core/` architecture
@@ -766,20 +767,148 @@ from automation scripting to production software engineering.
 
 ---
 
+# PHASE 11 — Logging Improvements
+
+## Objective
+
+Upgrade the logging system from a basic file logger to a
+production-grade observability layer with rotation,
+traceability, and per-device isolation.
+
+## Features Implemented
+
+- `RotatingFileHandler` — 5MB max per file, 5 rotated backups
+- Execution ID — unique `EXEC-YYYYMMDD-HHMMSS` per run
+- `ExecutionIDFilter` — injects ID into every log record
+- Per-device log file — `logs/{device_host}.log`
+- `add_device_handler()` / `remove_device_handler()` — opens and closes per-device handler cleanly around each device loop
+
+## Log Structure
+
+```
+logs/
+├── netdevops.log           ← all devices, all runs (rotating)
+├── netdevops.log.1         ← previous rotation
+└── devnetsandboxiosxec9k.cisco.com.log  ← this device only
+```
+
+## Log Format
+
+```
+2026-05-26 18:12:17 | INFO     | [EXEC-20260526-181217] | message
+```
+
+Every line is traceable to a specific run via the execution ID.
+
+## Key Learning — Singleton Logger Pattern
+
+Core modules call `get_logger()` at import time without an execution ID.
+When `main.py` later calls `get_logger(execution_id=exec_id)`, the filter
+on the existing singleton is updated — all modules immediately pick up
+the new execution ID without reinitialization.
+
+## Example Output
+
+```bash
+2026-05-26 18:12:17 | INFO     | [EXEC-20260526-181217] | NetDevOps Framework — LIVE MODE
+2026-05-26 18:12:17 | INFO     | [EXEC-20260526-181217] | Execution ID: EXEC-20260526-181217
+2026-05-26 18:12:19 | WARNING  | [EXEC-20260526-181217] | [DRIFT] GigabitEthernet1/0/2 → DRIFT
+2026-05-26 18:12:20 | INFO     | [EXEC-20260526-181217] | Remediation successful — GigabitEthernet1/0/2
+2026-05-26 18:12:23 | INFO     | [EXEC-20260526-181217] | NetDevOps Framework — Execution Complete
+```
+
+---
+
+# PHASE 12 — YAML Schema Validation
+
+## Objective
+
+Validate all inventory data against strict Pydantic models
+before any SSH connection is made.
+Prevent bad config from ever reaching a device.
+
+## Features Implemented
+
+- `scripts/core/validator.py` — new module
+- `DeviceModel` — validates device inventory fields
+- `InterfaceModel` — validates interface inventory fields
+- `validate_inventory()` — collects ALL errors before returning
+- Called in `main.py` immediately after loading inventory
+
+## Validation Rules
+
+### DeviceModel
+
+| Field | Rule |
+|---|---|
+| `host` | Required |
+| `device_type` | Required |
+| `username` | Must be present — catches missing `.env` |
+| `password` | Must be present — catches missing `.env` |
+
+### InterfaceModel
+
+| Field | Rule |
+|---|---|
+| `interface` | Required |
+| `description` | Required |
+| `ip` + `mask` | Required when `routed: true` |
+| `ip` format | Must be valid IPv4 address |
+| `mask` format | Must be valid IPv4 address |
+
+## Pipeline Position
+
+```text
+load_inventory.py loads YAML
+        ↓
+core/validator.py validates ALL devices + interfaces
+        ↓
+PASS → continue to SSH connection
+FAIL → log all errors + abort before touching any device
+```
+
+## Example — Validation Passed
+
+```bash
+2026-05-26 18:34:39 | INFO  | [EXEC-...] | Validating inventory schema...
+2026-05-26 18:34:39 | INFO  | [EXEC-...] | Inventory validation passed — 1 device(s), 3 interface(s)
+```
+
+## Example — Validation Failed
+
+```bash
+2026-05-26 18:35:54 | INFO  | [EXEC-...] | Validating inventory schema...
+2026-05-26 18:35:54 | ERROR | [EXEC-...] | Inventory validation failed:
+2026-05-26 18:35:54 | ERROR | [EXEC-...] |   interfaces[0]: ip is required when routed is True
+2026-05-26 18:35:54 | ERROR | [EXEC-...] | Aborting — fix inventory before retrying
+```
+
+No connection was made. No device was touched.
+
+## Key Engineering Principle Applied
+
+> Never connect to a device with unvalidated data.
+> Validate at the boundary — before the network, not during.
+
+---
+
 # 📊 Current Capabilities
 
 ## Successfully Implemented
 
 - Multi-interface automation
 - YAML inventory loading
+- YAML schema validation (Pydantic — pre-connection)
 - Jinja2 templating
 - Drift detection
 - Compliance validation
 - Automated remediation (full config push)
-- Structured logging (console + file)
+- Structured logging (rotating, console + file)
+- Execution IDs (per-run traceability)
+- Per-device log files
 - Rendered config archival (`configs/generated/`)
 - Dry-run mode (`--dry-run` flag)
-- Modular `core/` architecture (`main.py` + 6 focused modules)
+- Modular `core/` architecture (`main.py` + 7 focused modules)
 - HTML dashboard generation
 - JSON structured reporting
 - Local backup generation
@@ -822,7 +951,8 @@ python-netmiko-devnet-cisco/
 │   ├── devices.yml
 │   └── interfaces.yml
 ├── logs/
-│   └── netdevops.log
+│   ├── netdevops.log
+│   └── devnetsandboxiosxec9k.cisco.com.log 
 ├── reports/
 │   ├── html/
 │   └── json/
@@ -834,7 +964,8 @@ python-netmiko-devnet-cisco/
 │   │   ├── rendering.py
 │   │   ├── compliance.py
 │   │   ├── remediation.py
-│   │   └── reporting.py
+│   │   ├── reporting.py
+│   │   └── validator.py
 │   ├── load_inventory.py
 │   ├── logger.py
 │   └── main.py
@@ -867,6 +998,7 @@ This project follows core NetDevOps engineering principles:
 - reusable modules over duplicate scripts
 - observe before you act (logging first)
 - review before you push (dry-run before live)
+- validate at the boundary (schema check before connecting)
 
 ---
 
@@ -877,7 +1009,6 @@ This project follows core NetDevOps engineering principles:
 - No database-backed inventory yet
 - No scheduled compliance jobs yet
 - `tests/` directory empty — no automated test coverage yet
-- Logging improvements pending (rotating logs, execution IDs, per-device logs)
 
 ---
 
@@ -885,9 +1016,7 @@ This project follows core NetDevOps engineering principles:
 
 ## Short-Term
 
-- Logging improvements (rotating logs, execution IDs, per-device logs)
-- YAML schema validation
-- Multi-device testing
+- Multi-device testing and orchestration
 
 ## Mid-Term
 

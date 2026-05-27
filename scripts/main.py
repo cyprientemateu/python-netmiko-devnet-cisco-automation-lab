@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 from load_inventory import load_devices, load_interfaces
-from logger         import get_logger
+from logger         import get_logger, add_device_handler, remove_device_handler
 
 from core.connection  import connect, get_running_config
 from core.backup      import save_backup
@@ -11,11 +11,7 @@ from core.rendering   import render_and_save_configs
 from core.compliance  import diff_configs, compliance_check
 from core.remediation import remediate
 from core.reporting   import save_json_report, generate_html_report
-
-# =========================
-# LOGGER
-# =========================
-log = get_logger()
+from core.validator   import validate_inventory
 
 # =========================
 # CREATE PROJECT FOLDERS
@@ -52,15 +48,52 @@ interfaces = load_interfaces()
 # =========================
 def main():
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # -------------------------
+    # EXECUTION ID
+    # Unique identifier for this run.
+    # Stamped on every log line for full traceability.
+    # Format: EXEC-YYYYMMDD-HHMMSS
+    # -------------------------
+    timestamp    = datetime.now().strftime("%Y%m%d_%H%M%S")
+    execution_id = f"EXEC-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+    log = get_logger(execution_id=execution_id)
 
     log.info("=" * 60)
     log.info(f"NetDevOps Framework — {EXECUTION_MODE} MODE")
+    log.info(f"Execution ID: {execution_id}")
     log.info("=" * 60)
+
+    # -------------------------
+    # SCHEMA VALIDATION
+    # Validates all devices and interfaces against
+    # Pydantic models before any connection is made.
+    # Aborts immediately if any errors are found.
+    # -------------------------
+    log.info("Validating inventory schema...")
+    errors = validate_inventory(devices, interfaces)
+
+    if errors:
+        log.error("Inventory validation failed:")
+        for error in errors:
+            log.error(f"  {error}")
+        log.error("Aborting — fix inventory before retrying")
+        return
+
+    log.info(
+        f"Inventory validation passed — "
+        f"{len(devices)} device(s), {len(interfaces)} interface(s)"
+    )
 
     for device in devices:
 
         log.info(f"Processing device: {device['host']}")
+
+        # -------------------------
+        # PER-DEVICE LOG
+        # Adds logs/{device_host}.log for this device's run
+        # -------------------------
+        add_device_handler(device["host"])
 
         # -------------------------
         # CONNECT
@@ -69,6 +102,7 @@ def main():
             conn = connect(device)
         except Exception:
             log.error(f"Skipping {device['host']} — could not connect")
+            remove_device_handler(device["host"])
             continue
 
         # -------------------------
@@ -80,6 +114,7 @@ def main():
         except Exception as e:
             log.error(f"Backup failed — {device['host']} — {e}")
             conn.disconnect()
+            remove_device_handler(device["host"])
             continue
 
         # -------------------------
@@ -145,10 +180,11 @@ def main():
         )
 
         # -------------------------
-        # DISCONNECT
+        # DISCONNECT + CLOSE DEVICE LOG
         # -------------------------
         conn.disconnect()
         log.info(f"Disconnected from {device['host']}")
+        remove_device_handler(device["host"])
 
     log.info("=" * 60)
     log.info("NetDevOps Framework — Execution Complete")

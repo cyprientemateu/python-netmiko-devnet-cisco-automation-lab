@@ -1,6 +1,6 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Jinja2 templating, compliance validation, drift detection, remediation, structured logging, config archival, dry-run mode, and modular `core/` architecture.
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, structured logging, config archival, dry-run mode, and modular `core/` architecture.
 
 ## 🧭 Project Overview
 
@@ -53,14 +53,18 @@ It has evolved from simple SSH command execution into a full data-driven automat
 
 ### ✅ Observability
 - Structured logging via Python `logging` module
-- Simultaneous console and file output
+- Rotating file handler — 5MB max, 5 backups
+- Execution ID (`EXEC-YYYYMMDD-HHMMSS`) on every log line
+- Per-device log files (`logs/{device_host}.log`)
 - Persistent audit trail in `logs/netdevops.log`
 - INFO / WARNING / ERROR log levels
 
-### ✅ Config Archival & Dry-Run
-- Jinja2-rendered configs saved to `configs/generated/` before deployment
-- `--dry-run` flag — validate and report without pushing changes
-- Execution mode (DRY-RUN / LIVE) visible in logs and reports
+### ✅ Safety & Validation
+- Pydantic schema validation before any connection
+- Pre-change configuration backup
+- Post-change validation
+- Dry-run mode (`--dry-run`) — validate without pushing
+- Idempotent execution (safe re-runs, proven)
 
 ---
 
@@ -139,7 +143,8 @@ python-netmiko-devnet-cisco/
 │   ├── devices.yml
 │   └── interfaces.yml
 ├── logs/
-│   └── netdevops.log
+│   ├── netdevops.log
+│   └── devnetsandboxiosxec9k.cisco.com.log 
 ├── reports/
 │   ├── html/
 │   └── json/
@@ -151,7 +156,8 @@ python-netmiko-devnet-cisco/
 │   │   ├── rendering.py
 │   │   ├── compliance.py
 │   │   ├── remediation.py
-│   │   └── reporting.py
+│   │   ├── reporting.py
+│   │   └── validator.py
 │   ├── load_inventory.py
 │   ├── logger.py
 │   └── main.py
@@ -207,6 +213,7 @@ python-netmiko-devnet-cisco/
 ## ✅ Current Capabilities
 
 - YAML-driven device and interface inventory
+- Pydantic schema validation (pre-connection)
 - Reusable inventory loader module
 - Jinja2 configuration templating
 - Multi-interface configuration
@@ -214,10 +221,12 @@ python-netmiko-devnet-cisco/
 - Drift detection
 - Compliance validation
 - Automated remediation (full config push)
-- Structured logging (console + file audit trail)
+- Structured logging (rotating, console + file audit trail)
+- Execution IDs (per-run traceability)
+- Per-device log files
 - Rendered config archival (`configs/generated/`)
 - Dry-run mode (`--dry-run` flag)
-- Modular `core/` architecture (`main.py` + 6 focused modules)
+- Modular `core/` architecture (`main.py` + 7 focused modules)
 - Backup generation
 - HTML reporting dashboard
 - JSON reporting
@@ -259,15 +268,16 @@ Fix:
 ### Dry-Run — Validate Only (No Changes Pushed)
 
 ```bash
-2026-05-21 21:37:48 | INFO     | NetDevOps Framework — DRY-RUN MODE
-2026-05-21 21:37:50 | INFO     | [OK]    GigabitEthernet1/0/2 → COMPLIANT
-2026-05-21 21:37:50 | INFO     | [OK]    GigabitEthernet1/0/3 → COMPLIANT
-2026-05-21 21:37:50 | INFO     | [OK]    GigabitEthernet1/0/4 → COMPLIANT
-2026-05-21 21:37:50 | WARNING  | DRY-RUN MODE — remediation skipped, no changes pushed
-2026-05-21 21:37:50 | INFO     | NetDevOps Framework — Execution Complete
+2026-05-26 18:34:39 | INFO     | [EXEC-20260526-183439] | NetDevOps Framework — DRY-RUN MODE
+2026-05-26 18:34:39 | INFO     | [EXEC-20260526-183439] | Inventory validation passed — 1 device(s), 3 interface(s)
+2026-05-26 18:34:41 | INFO     | [EXEC-20260526-183439] | [OK]    GigabitEthernet1/0/2 → COMPLIANT
+2026-05-26 18:34:41 | INFO     | [EXEC-20260526-183439] | [OK]    GigabitEthernet1/0/3 → COMPLIANT
+2026-05-26 18:34:41 | INFO     | [EXEC-20260526-183439] | [OK]    GigabitEthernet1/0/4 → COMPLIANT
+2026-05-26 18:34:41 | WARNING  | [EXEC-20260526-183439] | DRY-RUN MODE — remediation skipped, no changes pushed
+2026-05-26 18:34:41 | INFO     | [EXEC-20260526-183439] | NetDevOps Framework — Execution Complete
 ```
 
-📄 [View Dry-Run Dashboard](/images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
+📄 [View Dry-Run Dashboard](images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
 
 ---
 
@@ -315,8 +325,6 @@ Fix:
 
 ## 🚀 Future Improvements
 
-- Logging improvements (rotating logs, execution IDs, per-device logs)
-- YAML schema validation
 - Multi-device orchestration
 - RESTCONF integration
 - PyATS/Genie validation
@@ -336,6 +344,7 @@ This project demonstrates:
 - Scalable modular software architecture
 - Idempotent execution model
 - Production-grade observability (logging + dry-run)
+- Defensive automation (schema validation before execution)
 
 ---
 
