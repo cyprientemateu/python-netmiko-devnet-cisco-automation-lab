@@ -7,11 +7,18 @@ log = get_logger()
 def connect(device):
     """
     Establishes an SSH connection to a network device using Netmiko.
+    Strips any non-Netmiko fields (e.g. label) before passing
+    the device dict to ConnectHandler.
     Raises exception on failure so main.py can skip the device cleanly.
     """
     log.info(f"Connecting to {device['host']}...")
     try:
-        conn = ConnectHandler(**device)
+        # Filter to Netmiko-accepted fields only
+        netmiko_params = {
+            k: v for k, v in device.items()
+            if k not in ("label",)
+        }
+        conn = ConnectHandler(**netmiko_params)
         log.info(f"Connection established — {device['host']}")
         return conn
     except Exception as e:

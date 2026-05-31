@@ -19,6 +19,7 @@ class DeviceModel(BaseModel):
     device_type: str
     username:    Optional[str] = None
     password:    Optional[str] = None
+    label:       Optional[str] = None
 
     @model_validator(mode="after")
     def check_credentials(self):

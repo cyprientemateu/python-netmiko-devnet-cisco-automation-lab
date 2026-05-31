@@ -1,6 +1,6 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, structured logging, config archival, dry-run mode, and modular `core/` architecture.
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, structured logging, config archival, dry-run mode, modular `core/` architecture, and sequential + parallel multi-device orchestration.
 
 ## 🧭 Project Overview
 
@@ -143,8 +143,7 @@ python-netmiko-devnet-cisco/
 │   ├── devices.yml
 │   └── interfaces.yml
 ├── logs/
-│   ├── netdevops.log
-│   └── devnetsandboxiosxec9k.cisco.com.log 
+│   └── netdevops.log
 ├── reports/
 │   ├── html/
 │   └── json/
@@ -157,7 +156,8 @@ python-netmiko-devnet-cisco/
 │   │   ├── compliance.py
 │   │   ├── remediation.py
 │   │   ├── reporting.py
-│   │   └── validator.py
+│   │   ├── validator.py
+│   │   └── orchestrator.py
 │   ├── load_inventory.py
 │   ├── logger.py
 │   └── main.py
@@ -226,11 +226,14 @@ python-netmiko-devnet-cisco/
 - Per-device log files
 - Rendered config archival (`configs/generated/`)
 - Dry-run mode (`--dry-run` flag)
-- Modular `core/` architecture (`main.py` + 7 focused modules)
+- Modular `core/` architecture (`main.py` + 8 focused modules)
+- Sequential multi-device orchestration
+- Parallel multi-device orchestration (`--parallel` flag)
+- Device labeling (`label` field in `devices.yml`)
 - Backup generation
 - HTML reporting dashboard
 - JSON reporting
-- Idempotent execution (proven)
+- Idempotent execution (proven in single and multi-device)
 - GitHub CI pipeline integration
 
 ---
@@ -264,6 +267,23 @@ Fix:
 ---
 
 ## 📊 Example Output
+
+### Parallel Live — 2 Devices Simultaneously
+
+```bash
+2026-05-31 16:35:43 | INFO  | [EXEC-20260531-163543] | NetDevOps Framework — LIVE | PARALLEL
+2026-05-31 16:35:43 | INFO  | [EXEC-20260531-163543] | Connecting to devnetsandboxiosxec9k.cisco.com...
+2026-05-31 16:35:43 | INFO  | [EXEC-20260531-163543] | Connecting to devnetsandboxiosxec9k.cisco.com...
+2026-05-31 16:35:45 | INFO  | [EXEC-20260531-163543] | [device-2] [OK] GigabitEthernet1/0/2 → COMPLIANT
+2026-05-31 16:35:45 | INFO  | [EXEC-20260531-163543] | [device-1] [OK] GigabitEthernet1/0/2 → COMPLIANT
+2026-05-31 16:35:46 | INFO  | [EXEC-20260531-163543] | [device-1] Processing complete ✔
+2026-05-31 16:35:46 | INFO  | [EXEC-20260531-163543] | [device-2] Processing complete ✔
+2026-05-31 16:35:46 | INFO  | [EXEC-20260531-163543] | NetDevOps Framework — Execution Complete
+```
+
+📄 [View Parallel Dashboard](images/screenshoots/Screenshot_2026-05-31_164434_parallel_live.png)
+
+---
 
 ### Dry-Run — Validate Only (No Changes Pushed)
 
@@ -325,11 +345,12 @@ Fix:
 
 ## 🚀 Future Improvements
 
-- Multi-device orchestration
 - RESTCONF integration
 - PyATS/Genie validation
+- Scheduled compliance jobs
 - Flask/FastAPI dashboard
 - Intent-based networking
+- Multi-vendor support
 
 ---
 
@@ -342,9 +363,10 @@ This project demonstrates:
 - Validation-first engineering approach
 - Data-driven automation (YAML + Jinja2)
 - Scalable modular software architecture
-- Idempotent execution model
+- Idempotent execution model (single and multi-device)
 - Production-grade observability (logging + dry-run)
 - Defensive automation (schema validation before execution)
+- Concurrent network automation (parallel multi-device)
 
 ---
 

@@ -40,6 +40,7 @@ The project evolved progressively from manual SSH automation into a scalable aut
 - rendered config archival
 - dry-run mode
 - modular `core/` architecture
+- sequential and parallel multi-device orchestration
 - JSON reporting
 - HTML dashboard generation
 - idempotent automation logic
@@ -892,6 +893,128 @@ No connection was made. No device was touched.
 
 ---
 
+# PHASE 13 — Multi-Device Orchestration
+
+## Objective
+
+Scale the framework from single-device to multi-device execution
+with both sequential and parallel processing modes.
+
+## Features Implemented
+
+- `scripts/core/orchestrator.py` — new module
+- `process_device()` — full pipeline for a single device, thread-safe
+- `run_parallel()` — `ThreadPoolExecutor` concurrent execution
+- `--parallel` CLI flag added to `main.py`
+- `label` field in `devices.yml` — device identity for filenames and logs
+- Non-Netmiko fields stripped before SSH connection (`label`, etc.)
+- Per-device log files scoped correctly in parallel mode using thread lock
+- Separate output files per device (backups, configs, reports, logs)
+
+## Usage
+
+```bash
+# Sequential — one device at a time
+python scripts/main.py
+
+# Parallel — all devices simultaneously
+python scripts/main.py --parallel
+
+# Either mode with dry-run
+python scripts/main.py --dry-run
+python scripts/main.py --parallel --dry-run
+```
+
+## devices.yml with Labels
+
+```yaml
+devices:
+  - host: devnetsandboxiosxec9k.cisco.com
+    device_type: cisco_xe
+    label: device-1
+
+  - host: devnetsandboxiosxec9k.cisco.com
+    device_type: cisco_xe
+    label: device-2
+```
+
+Labels ensure separate output files even when two entries share the same host.
+
+## Output Files Per Device
+
+```text
+backups/
+├── backup_device-1_20260531_163434.txt
+└── backup_device-2_20260531_163434.txt
+
+configs/generated/
+├── config_device-1_20260531_163434.txt
+└── config_device-2_20260531_163434.txt
+
+reports/html/
+├── report_device-1_20260531_163434.html
+└── report_device-2_20260531_163434.html
+
+logs/
+├── netdevops.log
+├── device-1.log
+└── device-2.log
+```
+
+## Key Learning — Non-Netmiko Fields
+
+When `ConnectHandler(**device)` is called, ALL dictionary keys are passed
+to Netmiko. Any custom field like `label` causes an immediate failure:
+
+```
+BaseConnection.__init__() got an unexpected keyword argument 'label'
+```
+
+Fix in `core/connection.py`:
+
+```python
+netmiko_params = {
+    k: v for k, v in device.items()
+    if k not in ("label",)
+}
+conn = ConnectHandler(**netmiko_params)
+```
+
+## Parallel Execution Proven
+
+Both threads launched simultaneously — confirmed by identical timestamps:
+
+```bash
+16:35:43 | Connecting to devnetsandboxiosxec9k.cisco.com...  ← thread 1
+16:35:43 | Connecting to devnetsandboxiosxec9k.cisco.com...  ← thread 2
+16:35:45 | [device-2] [OK] GigabitEthernet1/0/2 → COMPLIANT
+16:35:45 | [device-1] [OK] GigabitEthernet1/0/2 → COMPLIANT
+16:35:46 | [device-1] Processing complete ✔
+16:35:46 | [device-2] Processing complete ✔
+```
+
+📄 [View Parallel Dashboard](../images/screenshoots/Screenshot_2026-05-31_164434_parallel_live.png)
+
+## Sequential Live Run — Idempotency in Multi-Device Context
+
+The sequential live run demonstrated an important real-world behavior:
+
+```bash
+# device-1 processed first
+[device-1] [DRIFT] GigabitEthernet1/0/2 → DRIFT
+[device-1] Remediation successful — GigabitEthernet1/0/2
+
+# device-2 processed second — config already fixed by device-1
+[device-2] [OK] GigabitEthernet1/0/2 → COMPLIANT
+[device-2] All interfaces COMPLIANT — no remediation needed
+```
+
+Device-1 remediated the interfaces. By the time Device-2 connected,
+the device was already compliant. This is exactly how idempotent
+multi-device automation behaves in production.
+
+---
+
 # 📊 Current Capabilities
 
 ## Successfully Implemented
@@ -908,11 +1031,14 @@ No connection was made. No device was touched.
 - Per-device log files
 - Rendered config archival (`configs/generated/`)
 - Dry-run mode (`--dry-run` flag)
-- Modular `core/` architecture (`main.py` + 7 focused modules)
+- Modular `core/` architecture (`main.py` + 8 focused modules)
+- Sequential multi-device orchestration
+- Parallel multi-device orchestration (`--parallel` flag)
+- Device labeling for output file separation
 - HTML dashboard generation
 - JSON structured reporting
 - Local backup generation
-- Idempotent re-runs (proven)
+- Idempotent re-runs (proven in single and multi-device)
 - GitHub Actions CI/CD pipeline
 
 ---
@@ -952,7 +1078,8 @@ python-netmiko-devnet-cisco/
 │   └── interfaces.yml
 ├── logs/
 │   ├── netdevops.log
-│   └── devnetsandboxiosxec9k.cisco.com.log 
+│   ├── device-1.log
+│   └── device-2.log
 ├── reports/
 │   ├── html/
 │   └── json/
@@ -965,7 +1092,8 @@ python-netmiko-devnet-cisco/
 │   │   ├── compliance.py
 │   │   ├── remediation.py
 │   │   ├── reporting.py
-│   │   └── validator.py
+│   │   ├── validator.py
+│   │   └── orchestrator.py
 │   ├── load_inventory.py
 │   ├── logger.py
 │   └── main.py
@@ -999,6 +1127,7 @@ This project follows core NetDevOps engineering principles:
 - observe before you act (logging first)
 - review before you push (dry-run before live)
 - validate at the boundary (schema check before connecting)
+- scale horizontally (parallel execution over sequential waiting)
 
 ---
 
@@ -1016,14 +1145,14 @@ This project follows core NetDevOps engineering principles:
 
 ## Short-Term
 
-- Multi-device testing and orchestration
+- RESTCONF integration
+- PyATS/Genie validation
 
 ## Mid-Term
 
-- RESTCONF integration
-- PyATS/Genie validation
 - CSV/Excel inventory support
 - Configuration archival
+- Scheduled compliance jobs
 
 ## Long-Term
 
