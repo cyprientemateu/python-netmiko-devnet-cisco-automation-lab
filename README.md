@@ -1,6 +1,6 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, structured logging, config archival, dry-run mode, modular `core/` architecture, and sequential + parallel multi-device orchestration.
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, RESTCONF API integration, structured logging, config archival, dry-run mode, modular `core/` architecture, and sequential + parallel multi-device orchestration.
 
 ## 🧭 Project Overview
 
@@ -157,7 +157,8 @@ python-netmiko-devnet-cisco/
 │   │   ├── remediation.py
 │   │   ├── reporting.py
 │   │   ├── validator.py
-│   │   └── orchestrator.py
+│   │   ├── orchestrator.py
+│   │   └── restconf.py
 │   ├── load_inventory.py
 │   ├── logger.py
 │   └── main.py
@@ -218,21 +219,22 @@ python-netmiko-devnet-cisco/
 - Jinja2 configuration templating
 - Multi-interface configuration
 - Routed (L3) and switched (L2) interface support
-- Drift detection
-- Compliance validation
+- Drift detection (Netmiko CLI)
+- Compliance validation (dual-layer: Netmiko + RESTCONF)
 - Automated remediation (full config push)
+- RESTCONF API integration (`core/restconf.py`)
 - Structured logging (rotating, console + file audit trail)
 - Execution IDs (per-run traceability)
 - Per-device log files
 - Rendered config archival (`configs/generated/`)
 - Dry-run mode (`--dry-run` flag)
-- Modular `core/` architecture (`main.py` + 8 focused modules)
+- Modular `core/` architecture (`main.py` + 9 focused modules)
 - Sequential multi-device orchestration
 - Parallel multi-device orchestration (`--parallel` flag)
 - Device labeling (`label` field in `devices.yml`)
 - Backup generation
-- HTML reporting dashboard
-- JSON reporting
+- HTML reporting dashboard (with RESTCONF validation section)
+- JSON reporting (includes RESTCONF results)
 - Idempotent execution (proven in single and multi-device)
 - GitHub CI pipeline integration
 
@@ -268,6 +270,24 @@ Fix:
 
 ## 📊 Example Output
 
+### Live — Dual-Layer Compliance (Netmiko + RESTCONF)
+
+```bash
+2026-07-02 20:03:14 | INFO  | [EXEC-20260702-200309] | NetDevOps Framework — LIVE | SEQUENTIAL
+2026-07-02 20:03:14 | WARNING | [EXEC-20260702-200309] | [device-1] [DRIFT] GigabitEthernet1/0/2 → DRIFT
+2026-07-02 20:03:16 | INFO  | [EXEC-20260702-200309] | Remediation successful — GigabitEthernet1/0/2
+2026-07-02 20:03:22 | INFO  | [EXEC-20260702-200309] | RESTCONF GET successful
+2026-07-02 20:03:22 | INFO  | [EXEC-20260702-200309] | [device-1] RESTCONF [GigabitEthernet1/0/2] → COMPLIANT
+2026-07-02 20:03:26 | INFO  | [EXEC-20260702-200309] | [device-2] [OK] GigabitEthernet1/0/2 → COMPLIANT
+2026-07-02 20:03:27 | INFO  | [EXEC-20260702-200309] | [device-2] RESTCONF [GigabitEthernet1/0/2] → COMPLIANT
+```
+
+📄 [View RESTCONF Drift Dashboard — device-1](images/screenshoots/RESTCONF_DRIFT_DASHBOARD_device1.png)
+
+📄 [View RESTCONF Compliant Dashboard — device-2](images/screenshoots/RESTCONF_COMPLIANT_DASHBOARD_device2.png)
+
+---
+
 ### Parallel Live — 2 Devices Simultaneously
 
 ```bash
@@ -280,8 +300,6 @@ Fix:
 2026-05-31 16:35:46 | INFO  | [EXEC-20260531-163543] | [device-2] Processing complete ✔
 2026-05-31 16:35:46 | INFO  | [EXEC-20260531-163543] | NetDevOps Framework — Execution Complete
 ```
-
-📄 [View Parallel Dashboard](images/screenshoots/Screenshot_2026-05-31_164434_parallel_live.png)
 
 ---
 
@@ -345,7 +363,6 @@ Fix:
 
 ## 🚀 Future Improvements
 
-- RESTCONF integration
 - PyATS/Genie validation
 - Scheduled compliance jobs
 - Flask/FastAPI dashboard
@@ -367,6 +384,7 @@ This project demonstrates:
 - Production-grade observability (logging + dry-run)
 - Defensive automation (schema validation before execution)
 - Concurrent network automation (parallel multi-device)
+- API-native validation (RESTCONF dual-layer compliance)
 
 ---
 

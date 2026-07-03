@@ -7,24 +7,27 @@ log = get_logger()
 
 def save_json_report(
     device_host, timestamp, config_file,
-    compliance, diff_report, execution_mode
+    compliance, diff_report, execution_mode,
+    restconf_results=None
 ):
     """
     Saves a structured JSON report to reports/json/.
-    Includes execution mode, compliance results, and full diff data.
+    Includes execution mode, compliance results, full diff data,
+    and RESTCONF compliance results when available.
     Returns the path of the saved file.
     """
-    json_file = f"reports/json/report_{timestamp}.json"
+    json_file = f"reports/json/report_{device_host}_{timestamp}.json"
 
     try:
         with open(json_file, "w") as f:
             json.dump(
                 {
-                    "execution_mode": execution_mode,
-                    "device":         device_host,
-                    "timestamp":      timestamp,
-                    "config_file":    config_file,
-                    "compliance":     compliance,
+                    "execution_mode":    execution_mode,
+                    "device":            device_host,
+                    "timestamp":         timestamp,
+                    "config_file":       config_file,
+                    "compliance":        compliance,
+                    "restconf_compliance": restconf_results or {},
                     "diff": {
                         k: {
                             "expected": v["expected"],
@@ -48,12 +51,13 @@ def save_json_report(
 
 def generate_html_report(
     compliance, diff_report, device_host,
-    config_file, filename, execution_mode
+    config_file, filename, execution_mode,
+    restconf_results=None
 ):
     """
     Generates a visual HTML compliance dashboard saved to reports/html/.
-    Shows execution mode, expected vs actual config, and missing lines
-    per interface with color-coded COMPLIANT / DRIFT status.
+    Shows execution mode, expected vs actual config, missing lines,
+    and RESTCONF compliance results per interface.
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -118,6 +122,15 @@ def generate_html_report(
                 for line in data["missing"]:
                     html += f"<span class='rem'>- {line}</span>\n"
                 html += "</pre>"
+
+            # RESTCONF result for this interface
+            if restconf_results and intf in restconf_results:
+                rc_status = restconf_results[intf]
+                rc_css    = "compliant" if rc_status == "COMPLIANT" else "drift"
+                html += (
+                    f"<b>RESTCONF Validation:</b> "
+                    f"<span class='{rc_css}'>{rc_status}</span><br><br>"
+                )
 
             html += "</div>"
 

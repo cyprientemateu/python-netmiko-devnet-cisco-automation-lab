@@ -33,7 +33,7 @@ The project evolved progressively from manual SSH automation into a scalable aut
 - YAML-driven inventory
 - YAML schema validation (Pydantic)
 - Jinja2 configuration rendering
-- compliance validation
+- compliance validation (Netmiko CLI + RESTCONF API)
 - drift detection
 - automated remediation
 - structured logging (rotating, execution IDs, per-device)
@@ -41,6 +41,7 @@ The project evolved progressively from manual SSH automation into a scalable aut
 - dry-run mode
 - modular `core/` architecture
 - sequential and parallel multi-device orchestration
+- RESTCONF API integration (dual-layer validation)
 - JSON reporting
 - HTML dashboard generation
 - idempotent automation logic
@@ -445,7 +446,7 @@ Running remediation...
 ✔ DONE — devnetsandboxiosxec9k.cisco.com
 ```
 
-📄 [View Drift Dashboard — Run 1](../images/screenshoots/DRIFT_DASHBOARD_V3.png)
+📄 [View Drift Dashboard — Run 1](../reports/html/report_20260518_081527.html)
 
 ---
 
@@ -464,7 +465,7 @@ Running remediation...
 ✔ DONE — devnetsandboxiosxec9k.cisco.com
 ```
 
-📄 [View Compliant Dashboard — Run 2](../images/screenshoots/COMPLIANT_DASHBOARD_V3.png)
+📄 [View Compliant Dashboard — Run 2](../reports/html/report_20260518_082738.html)
 
 The framework only acts when action is needed.
 This is the gold standard for production automation.
@@ -651,7 +652,7 @@ python scripts/FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 2026-05-21 05:38:38 | INFO     | HTML report saved — reports/html/report_20260521_053836.html
 ```
 
-📄 [View Dry-Run Dashboard](../images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
+📄 [View Dry-Run Dashboard](images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
 
 ---
 
@@ -993,8 +994,6 @@ Both threads launched simultaneously — confirmed by identical timestamps:
 16:35:46 | [device-2] Processing complete ✔
 ```
 
-📄 [View Parallel Dashboard](../images/screenshoots/Screenshot_2026-05-31_164434_parallel_live.png)
-
 ## Sequential Live Run — Idempotency in Multi-Device Context
 
 The sequential live run demonstrated an important real-world behavior:
@@ -1015,6 +1014,101 @@ multi-device automation behaves in production.
 
 ---
 
+# PHASE 14 — RESTCONF Integration
+
+## Objective
+
+Add a second, API-native compliance validation layer alongside
+the existing Netmiko SSH layer. RESTCONF retrieves structured
+JSON directly from the device API — no text parsing required.
+
+## Features Implemented
+
+- `scripts/core/restconf.py` — new module
+- `get_restconf_interfaces()` — HTTPS GET to IETF interfaces endpoint
+- `parse_restconf_interfaces()` — converts JSON response to flat dict
+- `restconf_compliance_check()` — field-by-field comparison against desired state
+- Integrated into `orchestrator.py` after remediation
+- RESTCONF results included in JSON and HTML reports
+- `restconf_port: 443` field added to `devices.yml`
+- SSL verification disabled for DevNet sandbox self-signed certs
+
+## RESTCONF vs Netmiko Comparison
+
+| | Netmiko (Layer 1) | RESTCONF (Layer 2) |
+|---|---|---|
+| Transport | SSH | HTTPS |
+| Data format | CLI text | Structured JSON |
+| Parsing | Line-by-line extraction | Direct field access |
+| Purpose | Compliance + Remediation | API-native verification |
+| Speed | Slower | Faster |
+
+## Pipeline Position
+
+```text
+Netmiko SSH compliance check  ← Layer 1
+        ↓
+Remediation (if DRIFT)
+        ↓
+RESTCONF compliance check     ← Layer 2 (NEW)
+        ↓
+JSON + HTML reports (both layers)
+```
+
+## RESTCONF Endpoint
+
+```
+GET https://{host}:443/restconf/data/ietf-interfaces:interfaces
+Headers: Accept: application/yang-data+json
+Auth: HTTP Basic (same credentials from .env)
+```
+
+## Dual-Layer Validation Proven
+
+### Dry-Run — RESTCONF detects existing drift
+
+```bash
+[device-1] RESTCONF GET successful
+[device-1] RESTCONF [GigabitEthernet1/0/2] DRIFT — description: expected 'YAML LAB1' got 'PC2_Engineering'
+[device-1] RESTCONF [GigabitEthernet1/0/2] DRIFT — ip: expected '10.10.10.1' got 'None'
+[device-1] RESTCONF [GigabitEthernet1/0/4] DRIFT — enabled: expected 'True' got 'False'
+```
+
+### Live — RESTCONF confirms remediation worked
+
+```bash
+[device-1] Remediation successful — GigabitEthernet1/0/2
+[device-1] Remediation successful — GigabitEthernet1/0/3
+[device-1] Remediation successful — GigabitEthernet1/0/4
+[device-1] RESTCONF GET successful
+[device-1] RESTCONF [GigabitEthernet1/0/2] → COMPLIANT
+[device-1] RESTCONF [GigabitEthernet1/0/3] → COMPLIANT
+[device-1] RESTCONF [GigabitEthernet1/0/4] → COMPLIANT
+```
+
+📄 [View RESTCONF Drift Dashboard — device-1](../images/screenshoots/RESTCONF_DRIFT_DASHBOARD_device1.png)
+
+📄 [View RESTCONF Compliant Dashboard — device-2](../images/screenshoots/RESTCONF_COMPLIANT_DASHBOARD_device2.png)
+
+## HTML Report Enhancement
+
+Each interface card in the HTML dashboard now shows:
+
+```
+[COMPLIANT] GigabitEthernet1/0/2
+Expected (desired state): ...
+Actual (on device): ...
+RESTCONF Validation: COMPLIANT  ← new
+```
+
+## Key Engineering Principle Applied
+
+> One validation layer catches what you know to check.
+> Two validation layers catch what you didn't think to check.
+> RESTCONF confirms via the device API what Netmiko confirmed via CLI.
+
+---
+
 # 📊 Current Capabilities
 
 ## Successfully Implemented
@@ -1023,20 +1117,21 @@ multi-device automation behaves in production.
 - YAML inventory loading
 - YAML schema validation (Pydantic — pre-connection)
 - Jinja2 templating
-- Drift detection
-- Compliance validation
+- Drift detection (Netmiko CLI)
+- Compliance validation (dual-layer: Netmiko + RESTCONF)
 - Automated remediation (full config push)
+- RESTCONF API integration (`core/restconf.py`)
 - Structured logging (rotating, console + file)
 - Execution IDs (per-run traceability)
 - Per-device log files
 - Rendered config archival (`configs/generated/`)
 - Dry-run mode (`--dry-run` flag)
-- Modular `core/` architecture (`main.py` + 8 focused modules)
+- Modular `core/` architecture (`main.py` + 9 focused modules)
 - Sequential multi-device orchestration
 - Parallel multi-device orchestration (`--parallel` flag)
 - Device labeling for output file separation
-- HTML dashboard generation
-- JSON structured reporting
+- HTML dashboard generation (with RESTCONF validation section)
+- JSON structured reporting (includes RESTCONF results)
 - Local backup generation
 - Idempotent re-runs (proven in single and multi-device)
 - GitHub Actions CI/CD pipeline
@@ -1093,7 +1188,8 @@ python-netmiko-devnet-cisco/
 │   │   ├── remediation.py
 │   │   ├── reporting.py
 │   │   ├── validator.py
-│   │   └── orchestrator.py
+│   │   ├── orchestrator.py
+│   │   └── restconf.py
 │   ├── load_inventory.py
 │   ├── logger.py
 │   └── main.py
@@ -1134,7 +1230,6 @@ This project follows core NetDevOps engineering principles:
 # 🚧 Current Limitations
 
 - Single vendor focus (Cisco IOS-XE)
-- No RESTCONF/API integration yet
 - No database-backed inventory yet
 - No scheduled compliance jobs yet
 - `tests/` directory empty — no automated test coverage yet
@@ -1145,7 +1240,6 @@ This project follows core NetDevOps engineering principles:
 
 ## Short-Term
 
-- RESTCONF integration
 - PyATS/Genie validation
 
 ## Mid-Term

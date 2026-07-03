@@ -8,6 +8,10 @@ from core.rendering   import render_and_save_configs
 from core.compliance  import diff_configs, compliance_check
 from core.remediation import remediate
 from core.reporting   import save_json_report, generate_html_report
+from core.restconf    import (
+    get_restconf_interfaces,
+    restconf_compliance_check
+)
 
 log = get_logger()
 
@@ -94,18 +98,46 @@ def process_device(device, interfaces, timestamp, execution_mode, dry_run):
         remediate(conn, compliance, interfaces, dry_run=dry_run)
 
         # -------------------------
+        # RESTCONF COMPLIANCE CHECK
+        # Second validation layer using RESTCONF API.
+        # Runs after Netmiko compliance and remediation.
+        # Compares desired state against structured JSON
+        # from the device API — no text parsing needed.
+        # -------------------------
+        restconf_data = get_restconf_interfaces(
+            host=host,
+            username=device.get("username"),
+            password=device.get("password"),
+            port=device.get("restconf_port", 443),
+            device_id=device_id
+        )
+
+        if restconf_data:
+            restconf_results = restconf_compliance_check(
+                interfaces, restconf_data, device_id
+            )
+        else:
+            log.warning(
+                f"[{device_id}] RESTCONF data unavailable — "
+                f"skipping RESTCONF compliance check"
+            )
+            restconf_results = {}
+
+        # -------------------------
         # REPORTS
         # -------------------------
         html_file = f"reports/html/report_{device_id}_{timestamp}.html"
 
         save_json_report(
             device_id, timestamp, config_file,
-            compliance, diff_report, execution_mode
+            compliance, diff_report, execution_mode,
+            restconf_results
         )
 
         generate_html_report(
             compliance, diff_report, device_id,
-            config_file, html_file, execution_mode
+            config_file, html_file, execution_mode,
+            restconf_results
         )
 
         # -------------------------

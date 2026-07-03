@@ -16,8 +16,15 @@ def connect(device):
         # Filter to Netmiko-accepted fields only
         netmiko_params = {
             k: v for k, v in device.items()
-            if k not in ("label",)
+            if k not in ("label", "restconf_port")
         }
+
+        # Add timing parameters to handle prompt detection
+        # on DevNet sandbox devices with non-standard prompts
+        netmiko_params["global_delay_factor"] = 2
+        netmiko_params["fast_cli"]            = False
+        netmiko_params["conn_timeout"]        = 15
+
         conn = ConnectHandler(**netmiko_params)
         log.info(f"Connection established — {device['host']}")
         return conn

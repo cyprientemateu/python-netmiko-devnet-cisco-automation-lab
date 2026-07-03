@@ -15,11 +15,12 @@ log = get_logger()
 # =========================
 class DeviceModel(BaseModel):
 
-    host:        str
-    device_type: str
-    username:    Optional[str] = None
-    password:    Optional[str] = None
-    label:       Optional[str] = None
+    host:          str
+    device_type:   str
+    username:      Optional[str] = None
+    password:      Optional[str] = None
+    label:         Optional[str] = None
+    restconf_port: Optional[int] = 443
 
     @model_validator(mode="after")
     def check_credentials(self):
