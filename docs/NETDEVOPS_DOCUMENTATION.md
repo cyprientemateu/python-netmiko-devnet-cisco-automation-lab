@@ -42,6 +42,7 @@ The project evolved progressively from manual SSH automation into a scalable aut
 - modular `core/` architecture
 - sequential and parallel multi-device orchestration
 - RESTCONF API integration (dual-layer validation)
+- Flask compliance dashboard (web UI)
 - JSON reporting
 - HTML dashboard generation
 - idempotent automation logic
@@ -446,7 +447,7 @@ Running remediation...
 ✔ DONE — devnetsandboxiosxec9k.cisco.com
 ```
 
-📄 [View Drift Dashboard — Run 1](../reports/html/report_20260518_081527.html)
+📄 [View Drift Dashboard — Run 1](../images/screenshoots/DRIFT_DASHBOARD_V3.png)
 
 ---
 
@@ -465,7 +466,7 @@ Running remediation...
 ✔ DONE — devnetsandboxiosxec9k.cisco.com
 ```
 
-📄 [View Compliant Dashboard — Run 2](../reports/html/report_20260518_082738.html)
+📄 [View Compliant Dashboard — Run 2](../images/screenshoots/COMPLIANT_DASHBOARD_V3.png)
 
 The framework only acts when action is needed.
 This is the gold standard for production automation.
@@ -652,7 +653,7 @@ python scripts/FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 2026-05-21 05:38:38 | INFO     | HTML report saved — reports/html/report_20260521_053836.html
 ```
 
-📄 [View Dry-Run Dashboard](images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
+📄 [View Dry-Run Dashboard](../images/screenshoots/Screenshot_2026-05-21_115924_DRY_RUN_V6.png)
 
 ---
 
@@ -1109,6 +1110,95 @@ RESTCONF Validation: COMPLIANT  ← new
 
 ---
 
+# PHASE 15 — Flask Compliance Dashboard
+
+## Objective
+
+Build a web-based UI that reads existing JSON reports and presents
+compliance status, RESTCONF results, and execution history in a browser.
+No database required — the `reports/json/` files are the data source.
+
+## Features Implemented
+
+- `dashboard/app.py` — Flask application
+- `dashboard/templates/base.html` — shared layout with sticky navbar
+- `dashboard/templates/index.html` — overview page with summary cards, device status, execution history, and run controls
+- `dashboard/templates/report.html` — detailed report view per run
+- `dashboard/templates/logs.html` — live log viewer with color-coded lines
+- `dashboard/static/style.css` — dark terminal-inspired theme
+
+## Dashboard Structure
+
+```
+dashboard/
+├── app.py
+├── templates/
+│   ├── base.html
+│   ├── index.html
+│   ├── report.html
+│   └── logs.html
+└── static/
+    └── style.css
+```
+
+## Pages and Routes
+
+| Route | Page | What it shows |
+|---|---|---|
+| `/` | Overview | Summary cards, latest device status, execution history |
+| `/report/<filename>` | Report Detail | Full compliance + RESTCONF results per interface |
+| `/logs` | Execution Logs | Last 50 lines of `logs/netdevops.log` with color coding |
+| `POST /run` | — | Triggers `main.py` from browser, returns stdout as JSON |
+| `/api/logs` | — | Log lines as JSON for live refresh |
+| `/api/summary` | — | Compliance summary as JSON |
+
+## How to Run
+
+```bash
+# From project root
+python dashboard/app.py
+
+# Open browser at:
+http://127.0.0.1:5000
+```
+
+## Design
+
+- Dark terminal theme (`#0d1117` background — GitHub dark)
+- Green (`#3fb950`) for COMPLIANT, Red (`#f85149`) for DRIFT
+- Monospace font for all device and config data
+- Responsive grid layout
+- Modal popup for run output
+- Sticky navbar with Overview and Logs links
+
+## Dashboard Screenshots
+
+### Overview Page
+
+📄 [View Dashboard Overview — Run 1](../images/screenshoots/FLASK_DASHBOARD_OVERVIEW.png)
+
+📄 [View Dashboard Overview — Run 2](../images/screenshoots/FLASK_DASHBOARD_OVERVIEW_2.png)
+
+### Report Detail Page
+
+📄 [View Report Detail — Run 1](../images/screenshoots/FLASK_DASHBOARD_REPORT_DETAIL.png)
+
+📄 [View Report Detail — Run 2](../images/screenshoots/FLASK_DASHBOARD_REPORT_DETAIL_2.png)
+
+### Logs Page
+
+📄 [View Logs Page — Run 1](../images/screenshoots/FLASK_DASHBOARD_LOGS.png)
+
+📄 [View Logs Page — Run 2](../images/screenshoots/FLASK_DASHBOARD_LOGS_2.png)
+
+## Key Engineering Principle Applied
+
+> Compliance data is only useful if it's visible.
+> The dashboard turns JSON reports into actionable insights
+> without requiring any new data infrastructure.
+
+---
+
 # 📊 Current Capabilities
 
 ## Successfully Implemented
@@ -1130,6 +1220,7 @@ RESTCONF Validation: COMPLIANT  ← new
 - Sequential multi-device orchestration
 - Parallel multi-device orchestration (`--parallel` flag)
 - Device labeling for output file separation
+- Flask compliance dashboard (`dashboard/`)
 - HTML dashboard generation (with RESTCONF validation section)
 - JSON structured reporting (includes RESTCONF results)
 - Local backup generation
@@ -1160,6 +1251,15 @@ python-netmiko-devnet-cisco/
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 │       └── NETDEVOPS_DOCUMENTATION_V1.md
+├── dashboard/
+│   ├── app.py
+│   ├── templates/
+│   │   ├── base.html
+│   │   ├── index.html
+│   │   ├── report.html
+│   │   └── logs.html
+│   └── static/
+│       └── style.css
 ├── backups/
 ├── configs/
 │   └── generated/
@@ -1224,6 +1324,7 @@ This project follows core NetDevOps engineering principles:
 - review before you push (dry-run before live)
 - validate at the boundary (schema check before connecting)
 - scale horizontally (parallel execution over sequential waiting)
+- make it visible (compliance data belongs in a dashboard)
 
 ---
 
@@ -1233,6 +1334,7 @@ This project follows core NetDevOps engineering principles:
 - No database-backed inventory yet
 - No scheduled compliance jobs yet
 - `tests/` directory empty — no automated test coverage yet
+- Flask dashboard runs in development mode only
 
 ---
 
@@ -1241,17 +1343,17 @@ This project follows core NetDevOps engineering principles:
 ## Short-Term
 
 - PyATS/Genie validation
+- Scheduled compliance jobs
 
 ## Mid-Term
 
 - CSV/Excel inventory support
 - Configuration archival
-- Scheduled compliance jobs
+- Flask dashboard production deployment (gunicorn/nginx)
 
 ## Long-Term
 
 - Intent-based networking
-- Flask/FastAPI dashboard
 - Real-time compliance engine
 - Multi-vendor support
 

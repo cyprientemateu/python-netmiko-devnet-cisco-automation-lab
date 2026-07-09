@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Logs — NetDevOps Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <a href="{{ url_for('index') }}" class="back-link">← Back to Overview</a>
+        <h1 class="page-title">Execution Logs</h1>
+        <p class="page-sub">Last 50 lines from logs/netdevops.log</p>
+    </div>
+    <button class="btn btn-secondary" onclick="refreshLogs()">↻ Refresh</button>
+</div>
+
+<div class="log-terminal" id="logTerminal">
+    {% for line in lines %}
+    <div class="log-line {{ 'log-warn' if 'WARNING' in line else ('log-error' if 'ERROR' in line else 'log-info') }}">
+        {{ line }}
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshLogs() {
+    fetch('/api/logs')
+    .then(r => r.json())
+    .then(data => {
+        const terminal = document.getElementById('logTerminal');
+        terminal.innerHTML = data.lines.map(line => {
+            let cls = 'log-info';
+            if (line.includes('WARNING')) cls = 'log-warn';
+            if (line.includes('ERROR'))   cls = 'log-error';
+            return `<div class="log-line ${cls}">${line}</div>`;
+        }).join('');
+        terminal.scrollTop = terminal.scrollHeight;
+    });
+}
+
+// Auto-scroll to bottom on load
+window.onload = () => {
+    const t = document.getElementById('logTerminal');
+    t.scrollTop = t.scrollHeight;
+};
+</script>
+{% endblock %}

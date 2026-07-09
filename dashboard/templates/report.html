@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Report {{ report.device }} — NetDevOps Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <a href="{{ url_for('index') }}" class="back-link">← Back to Overview</a>
+        <h1 class="page-title">{{ report.device }}</h1>
+        <p class="page-sub">
+            {{ report.timestamp }} &nbsp;·&nbsp;
+            <span class="badge-mode mode-{{ report.execution_mode | lower | replace('-','') }}">
+                {{ report.execution_mode }}
+            </span>
+        </p>
+    </div>
+</div>
+
+<!-- ========================= -->
+<!-- SUMMARY CARDS             -->
+<!-- ========================= -->
+<div class="card-grid">
+    <div class="card card-stat">
+        <div class="stat-label">Interfaces Checked</div>
+        <div class="stat-value">{{ total }}</div>
+    </div>
+    <div class="card card-stat">
+        <div class="stat-label">Compliant</div>
+        <div class="stat-value compliant">{{ compliant }}</div>
+    </div>
+    <div class="card card-stat">
+        <div class="stat-label">Drift</div>
+        <div class="stat-value {% if drift > 0 %}drift{% else %}compliant{% endif %}">
+            {{ drift }}
+        </div>
+    </div>
+</div>
+
+<!-- ========================= -->
+<!-- META INFO                 -->
+<!-- ========================= -->
+<div class="meta-bar">
+    <span class="meta-item">
+        <span class="meta-label">Config Archive:</span>
+        <span class="mono">{{ report.config_file or 'N/A' }}</span>
+    </span>
+</div>
+
+<!-- ========================= -->
+<!-- INTERFACE COMPLIANCE      -->
+<!-- ========================= -->
+<section class="section">
+    <h2 class="section-title">Interface Compliance</h2>
+
+    {% for intf, status in report.compliance.items() %}
+    {% set diff_data = report.diff.get(intf, {}) %}
+    {% set rc_status = report.restconf_compliance.get(intf, None) if report.restconf_compliance else None %}
+
+    <div class="intf-detail-card {{ 'card-compliant' if status == 'COMPLIANT' else 'card-drift' }}">
+
+        <div class="intf-detail-header">
+            <span class="intf-detail-name">{{ intf }}</span>
+            <div class="intf-badges">
+                <span class="badge badge-{{ 'ok' if status == 'COMPLIANT' else 'drift' }}">
+                    SSH: {{ status }}
+                </span>
+                {% if rc_status %}
+                <span class="badge badge-{{ 'ok' if rc_status == 'COMPLIANT' else 'drift' }}">
+                    RESTCONF: {{ rc_status }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="diff-grid">
+            <div class="diff-col">
+                <div class="diff-label">Expected (desired state)</div>
+                <pre class="code-block">{% for line in diff_data.get('expected', []) %}{{ line }}
+{% endfor %}</pre>
+            </div>
+            <div class="diff-col">
+                <div class="diff-label">Actual (on device)</div>
+                <pre class="code-block">{% for line in diff_data.get('actual', []) %}{{ line }}
+{% endfor %}</pre>
+            </div>
+        </div>
+
+        {% if diff_data.get('missing') %}
+        <div class="missing-block">
+            <div class="diff-label">Missing lines (causing DRIFT)</div>
+            {% for line in diff_data.missing %}
+            <div class="missing-line">− {{ line }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+    </div>
+    {% endfor %}
+</section>
+
+{% endblock %}

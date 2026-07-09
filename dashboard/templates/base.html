@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NetDevOps Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="nav-icon">⬡</span>
+            <span class="nav-title">NetDevOps</span>
+            <span class="nav-sub">Compliance Dashboard</span>
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}" class="nav-link">Overview</a>
+            <a href="{{ url_for('logs') }}" class="nav-link">Logs</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <span>NetDevOps Automation Framework</span>
+        <span class="footer-sep">·</span>
+        <span>Cyprien Carlos Temateu</span>
+        <span class="footer-sep">·</span>
+        <span>Cisco IOS-XE | DevNet Sandbox</span>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+
+</body>
+</html>

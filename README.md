@@ -1,6 +1,6 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, RESTCONF API integration, structured logging, config archival, dry-run mode, modular `core/` architecture, and sequential + parallel multi-device orchestration.
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, RESTCONF API integration, structured logging, config archival, dry-run mode, modular `core/` architecture, sequential + parallel multi-device orchestration, and a Flask compliance dashboard.
 
 ## 🧭 Project Overview
 
@@ -44,6 +44,15 @@ It has evolved from simple SSH command execution into a full data-driven automat
 - Interface block extraction from running config
 - Subset-based compliance check (avoids false positives)
 - Drift detection and classification
+
+### ✅ Flask Compliance Dashboard
+- Web UI at `http://localhost:5000`
+- Overview page with summary cards and device status
+- Dual SSH + RESTCONF badges per interface
+- Report detail page with expected vs actual side by side
+- Live log viewer with color-coded WARNING/ERROR lines
+- Run Dry-Run or Live directly from browser
+- Full execution history table
 
 ### ✅ Reporting System
 - JSON structured reports
@@ -131,6 +140,15 @@ python-netmiko-devnet-cisco/
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 │       └── NETDEVOPS_DOCUMENTATION_V1.md
+├── dashboard/
+│   ├── app.py
+│   ├── templates/
+│   │   ├── base.html
+│   │   ├── index.html
+│   │   ├── report.html
+│   │   └── logs.html
+│   └── static/
+│       └── style.css
 ├── backups/
 ├── configs/
 │   └── generated/
@@ -223,6 +241,7 @@ python-netmiko-devnet-cisco/
 - Compliance validation (dual-layer: Netmiko + RESTCONF)
 - Automated remediation (full config push)
 - RESTCONF API integration (`core/restconf.py`)
+- Flask compliance dashboard (`dashboard/`)
 - Structured logging (rotating, console + file audit trail)
 - Execution IDs (per-run traceability)
 - Per-device log files
@@ -269,6 +288,26 @@ Fix:
 ---
 
 ## 📊 Example Output
+
+### Flask Dashboard — Overview Page
+
+📄 [View Dashboard Overview — Run 1](images/screenshoots/FLASK_DASHBOARD_OVERVIEW.png)
+
+📄 [View Dashboard Overview — Run 2](images/screenshoots/FLASK_DASHBOARD_OVERVIEW_2.png)
+
+### Flask Dashboard — Report Detail Page
+
+📄 [View Report Detail — Run 1](images/screenshoots/FLASK_DASHBOARD_REPORT_DETAIL.png)
+
+📄 [View Report Detail — Run 2](images/screenshoots/FLASK_DASHBOARD_REPORT_DETAIL_2.png)
+
+### Flask Dashboard — Logs Page
+
+📄 [View Logs Page — Run 1](images/screenshoots/FLASK_DASHBOARD_LOGS.png)
+
+📄 [View Logs Page — Run 2](images/screenshoots/FLASK_DASHBOARD_LOGS_2.png)
+
+---
 
 ### Live — Dual-Layer Compliance (Netmiko + RESTCONF)
 
@@ -365,7 +404,7 @@ Fix:
 
 - PyATS/Genie validation
 - Scheduled compliance jobs
-- Flask/FastAPI dashboard
+- Flask dashboard production deployment (gunicorn/nginx)
 - Intent-based networking
 - Multi-vendor support
 
@@ -385,6 +424,7 @@ This project demonstrates:
 - Defensive automation (schema validation before execution)
 - Concurrent network automation (parallel multi-device)
 - API-native validation (RESTCONF dual-layer compliance)
+- Full-stack NetDevOps (automation + web dashboard)
 
 ---
 

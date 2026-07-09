@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Overview — NetDevOps Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- ========================= -->
+<!-- HEADER STRIP              -->
+<!-- ========================= -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Compliance Overview</h1>
+        <p class="page-sub">Last refreshed: {{ now }}</p>
+    </div>
+    <div class="run-controls">
+        <button class="btn btn-secondary" onclick="runFramework('dry-run')">
+            ▷ Dry-Run
+        </button>
+        <button class="btn btn-primary" onclick="runFramework('live')">
+            ⚡ Run Live
+        </button>
+    </div>
+</div>
+
+<!-- ========================= -->
+<!-- SUMMARY CARDS             -->
+<!-- ========================= -->
+<div class="card-grid">
+    <div class="card card-stat">
+        <div class="stat-label">Devices Tracked</div>
+        <div class="stat-value">{{ total_devices }}</div>
+    </div>
+    <div class="card card-stat">
+        <div class="stat-label">Fully Compliant</div>
+        <div class="stat-value compliant">{{ all_compliant }}</div>
+    </div>
+    <div class="card card-stat">
+        <div class="stat-label">Drift Detected</div>
+        <div class="stat-value {% if any_drift > 0 %}drift{% else %}compliant{% endif %}">
+            {{ any_drift }}
+        </div>
+    </div>
+</div>
+
+<!-- ========================= -->
+<!-- LATEST STATUS PER DEVICE  -->
+<!-- ========================= -->
+<section class="section">
+    <h2 class="section-title">Latest Device Status</h2>
+
+    {% if latest_reports %}
+        {% for report in latest_reports %}
+        <div class="device-card">
+            <div class="device-header">
+                <div>
+                    <span class="device-name">{{ report.device }}</span>
+                    <span class="device-mode mode-{{ report.execution_mode | lower | replace('-','') }}">
+                        {{ report.execution_mode }}
+                    </span>
+                </div>
+                <span class="device-time">{{ report.timestamp }}</span>
+            </div>
+
+            <div class="intf-grid">
+                {% for intf, status in report.compliance.items() %}
+                <div class="intf-row">
+                    <span class="intf-name">{{ intf }}</span>
+                    <div class="intf-badges">
+                        <span class="badge badge-{{ 'ok' if status == 'COMPLIANT' else 'drift' }}">
+                            SSH {{ status }}
+                        </span>
+                        {% if report.restconf_compliance %}
+                            {% set rc = report.restconf_compliance.get(intf, 'N/A') %}
+                            <span class="badge badge-{{ 'ok' if rc == 'COMPLIANT' else 'drift' }}">
+                                API {{ rc }}
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="device-footer">
+                <a href="{{ url_for('report_detail', filename=report._filename) }}"
+                   class="link-detail">View full report →</a>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            No reports found. Run the framework first.
+        </div>
+    {% endif %}
+</section>
+
+<!-- ========================= -->
+<!-- EXECUTION HISTORY         -->
+<!-- ========================= -->
+<section class="section">
+    <h2 class="section-title">Execution History</h2>
+    <div class="history-table-wrap">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Device</th>
+                    <th>Mode</th>
+                    <th>SSH Result</th>
+                    <th>RESTCONF</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in all_reports %}
+                <tr>
+                    <td class="mono">{{ report.timestamp }}</td>
+                    <td>{{ report.device }}</td>
+                    <td>
+                        <span class="badge-mode mode-{{ report.execution_mode | lower | replace('-','') }}">
+                            {{ report.execution_mode }}
+                        </span>
+                    </td>
+                    <td>
+                        {% set has_drift = report.compliance.values() | list | reject('equalto','COMPLIANT') | list %}
+                        {% if has_drift %}
+                            <span class="pill pill-drift">DRIFT</span>
+                        {% else %}
+                            <span class="pill pill-ok">COMPLIANT</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if report.restconf_compliance %}
+                            {% set rc_drift = report.restconf_compliance.values() | list | reject('equalto','COMPLIANT') | list %}
+                            {% if rc_drift %}
+                                <span class="pill pill-drift">DRIFT</span>
+                            {% else %}
+                                <span class="pill pill-ok">COMPLIANT</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="pill pill-na">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('report_detail', filename=report._filename) }}"
+                           class="link-detail">View →</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ========================= -->
+<!-- RUN OUTPUT MODAL          -->
+<!-- ========================= -->
+<div class="modal-overlay" id="runModal" style="display:none">
+    <div class="modal">
+        <div class="modal-header">
+            <span id="modalTitle">Running framework...</span>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="runSpinner" class="spinner">⟳ Executing...</div>
+            <pre id="runOutput" class="run-output" style="display:none"></pre>
+        </div>
+        <div class="modal-footer" id="modalFooter" style="display:none">
+            <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button class="btn btn-primary" onclick="location.reload()">Refresh Dashboard</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function runFramework(mode) {
+    document.getElementById('runModal').style.display = 'flex';
+    document.getElementById('modalTitle').textContent =
+        mode === 'dry-run' ? '▷ Running Dry-Run...' : '⚡ Running Live...';
+    document.getElementById('runSpinner').style.display = 'block';
+    document.getElementById('runOutput').style.display  = 'none';
+    document.getElementById('modalFooter').style.display = 'none';
+
+    fetch('/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: mode })
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('runSpinner').style.display = 'none';
+        document.getElementById('runOutput').style.display  = 'block';
+        document.getElementById('modalFooter').style.display = 'flex';
+        document.getElementById('modalTitle').textContent =
+            data.success ? '✔ Run Complete' : '✖ Run Failed';
+        document.getElementById('runOutput').textContent =
+            data.stdout || data.stderr || 'No output.';
+    })
+    .catch(err => {
+        document.getElementById('runSpinner').style.display = 'none';
+        document.getElementById('runOutput').style.display  = 'block';
+        document.getElementById('runOutput').textContent    = 'Error: ' + err;
+        document.getElementById('modalFooter').style.display = 'flex';
+    });
+}
+
+function closeModal() {
+    document.getElementById('runModal').style.display = 'none';
+}
+</script>
+{% endblock %}
