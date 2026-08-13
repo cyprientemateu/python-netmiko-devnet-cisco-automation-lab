@@ -1199,6 +1199,65 @@ http://127.0.0.1:5000
 
 ---
 
+# PHASE 16 — Connection Hardening
+
+## Objective
+
+Improve SSH connection reliability on DevNet sandbox devices
+that exhibit non-standard behavior including slow initialization,
+non-standard prompts, and user EXEC mode landing.
+
+## Features Implemented
+
+- `global_delay_factor = 4` — increased from 2 for slower sandbox response
+- `fast_cli = False` — disables fast mode for better prompt detection
+- `conn_timeout = 15` — extended connection timeout
+- `session_timeout = 60` — extended session timeout
+- Non-Netmiko fields stripped before `ConnectHandler`:
+  `label`, `restconf_port` excluded from SSH params
+
+## Key Learning — Shared Sandbox Behavior
+
+DevNet Always-On sandboxes are shared resources with known issues:
+
+- Other users can reset device config at any time
+- SSH port may be open but AAA service not yet initialized
+- Credentials are dynamic and unique per reservation
+- Device may land at user EXEC (`R1>`) instead of privileged (`R1#`)
+- Sandbox infrastructure can experience authentication failures
+  affecting all users simultaneously (confirmed in DevNet community)
+
+## Key Learning — Non-Netmiko Fields Must Be Stripped
+
+Any custom field added to `devices.yml` must be excluded
+before passing to `ConnectHandler`:
+
+```python
+netmiko_params = {
+    k: v for k, v in device.items()
+    if k not in ("label", "restconf_port")
+}
+```
+
+Failing to strip custom fields causes immediate connection failure:
+```
+BaseConnection.__init__() got an unexpected keyword argument 'label'
+```
+
+## Sandbox Troubleshooting Checklist
+
+When sandbox authentication fails:
+
+1. Verify TCP port 22 is open: `socket.create_connection(host, 22)`
+2. Verify credentials load correctly from `.env`
+3. Test manual SSH before running framework
+4. Check if sandbox session has expired (3-day limit)
+5. Launch a new reservation and wait 5-10 minutes
+6. Check DevNet community for known infrastructure issues
+7. Try with `look_for_keys=False` and `allow_agent=False`
+
+---
+
 # 📊 Current Capabilities
 
 ## Successfully Implemented
@@ -1335,6 +1394,8 @@ This project follows core NetDevOps engineering principles:
 - No scheduled compliance jobs yet
 - `tests/` directory empty — no automated test coverage yet
 - Flask dashboard runs in development mode only
+- DevNet Always-On sandbox is a shared resource — other users
+  can reset device config at any time causing unexpected DRIFT
 
 ---
 

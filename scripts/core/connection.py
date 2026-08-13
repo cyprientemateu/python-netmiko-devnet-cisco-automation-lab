@@ -21,9 +21,10 @@ def connect(device):
 
         # Add timing parameters to handle prompt detection
         # on DevNet sandbox devices with non-standard prompts
-        netmiko_params["global_delay_factor"] = 2
+        netmiko_params["global_delay_factor"] = 4
         netmiko_params["fast_cli"]            = False
         netmiko_params["conn_timeout"]        = 15
+        netmiko_params["session_timeout"]     = 60
 
         conn = ConnectHandler(**netmiko_params)
         log.info(f"Connection established — {device['host']}")
