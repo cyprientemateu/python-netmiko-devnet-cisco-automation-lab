@@ -23,6 +23,56 @@ jobs:
       run: |
         pip install -r requirements.txt
 
-    - name: Syntax Check
+    - name: Syntax Check — scripts/
       run: |
-        python -m py_compile scripts/*.py
+        python -m py_compile scripts/main.py
+        python -m py_compile scripts/load_inventory.py
+        python -m py_compile scripts/logger.py
+        python -m py_compile scripts/scheduler.py
+
+    - name: Syntax Check — scripts/core/
+      run: |
+        python -m py_compile scripts/core/connection.py
+        python -m py_compile scripts/core/backup.py
+        python -m py_compile scripts/core/rendering.py
+        python -m py_compile scripts/core/compliance.py
+        python -m py_compile scripts/core/remediation.py
+        python -m py_compile scripts/core/reporting.py
+        python -m py_compile scripts/core/validator.py
+        python -m py_compile scripts/core/orchestrator.py
+        python -m py_compile scripts/core/restconf.py
+
+    - name: Syntax Check — dashboard/
+      run: |
+        python -m py_compile dashboard/app.py
+
+    - name: Validate YAML Inventory
+      run: |
+        python -c "
+        import yaml
+        import sys
+
+        files = [
+            'inventory/devices.yml',
+            'inventory/interfaces.yml',
+            'config/scheduler_config.yml'
+        ]
+
+        for f in files:
+            try:
+                with open(f) as fp:
+                    yaml.safe_load(fp)
+                print(f'OK: {f}')
+            except Exception as e:
+                print(f'FAILED: {f} — {e}')
+                sys.exit(1)
+        "
+
+    - name: Validate Jinja2 Template
+      run: |
+        python -c "
+        from jinja2 import Environment, FileSystemLoader
+        env = Environment(loader=FileSystemLoader('templates'))
+        t = env.get_template('interface.j2')
+        print('OK: templates/interface.j2')
+        "

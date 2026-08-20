@@ -1,6 +1,6 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, RESTCONF API integration, structured logging, config archival, dry-run mode, modular `core/` architecture, sequential + parallel multi-device orchestration, and a Flask compliance dashboard.
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, RESTCONF API integration, structured logging, config archival, dry-run mode, modular `core/` architecture, sequential + parallel multi-device orchestration, Flask compliance dashboard, and scheduled compliance jobs.
 
 ## 🧭 Project Overview
 
@@ -140,6 +140,8 @@ python-netmiko-devnet-cisco/
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 │       └── NETDEVOPS_DOCUMENTATION_V1.md
+├── config/
+│   └── scheduler_config.yml
 ├── dashboard/
 │   ├── app.py
 │   ├── templates/
@@ -179,6 +181,7 @@ python-netmiko-devnet-cisco/
 │   │   └── restconf.py
 │   ├── load_inventory.py
 │   ├── logger.py
+│   ├── scheduler.py
 │   └── main.py
 ├── templates/
 │   └── interface.j2
@@ -242,6 +245,7 @@ python-netmiko-devnet-cisco/
 - Automated remediation (full config push)
 - RESTCONF API integration (`core/restconf.py`)
 - Flask compliance dashboard (`dashboard/`)
+- Scheduled compliance jobs (`scripts/scheduler.py`)
 - Structured logging (rotating, console + file audit trail)
 - Execution IDs (per-run traceability)
 - Per-device log files
@@ -406,11 +410,11 @@ Fix:
 
 ## 🚀 Future Improvements
 
-- PyATS/Genie validation
-- Scheduled compliance jobs
 - Flask dashboard production deployment (gunicorn/nginx)
-- Intent-based networking
+- Scheduler as background service
 - Multi-vendor support
+- Intent-based networking
+- PyATS/Genie validation (Linux/Mac only)
 
 ---
 
@@ -429,9 +433,11 @@ This project demonstrates:
 - Concurrent network automation (parallel multi-device)
 - API-native validation (RESTCONF dual-layer compliance)
 - Full-stack NetDevOps (automation + web dashboard)
+- Continuous compliance (scheduled automation jobs)
 
 ---
 
 ## ✍️ Maintainer
 Cyprien Carlos Temateu
+
 NetDevOps Practice Lab

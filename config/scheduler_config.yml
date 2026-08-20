@@ -1,0 +1,13 @@
+schedule:
+  # How often to run the compliance job (in minutes)
+  interval: 60
+
+  # Execution mode: dry-run or live
+  # dry-run  → validate and report only, no changes pushed
+  # live      → validate, remediate, and report
+  mode: dry-run
+
+  # Run devices sequentially or in parallel
+  # true  → all devices simultaneously
+  # false → one device at a time
+  parallel: false

@@ -43,6 +43,7 @@ The project evolved progressively from manual SSH automation into a scalable aut
 - sequential and parallel multi-device orchestration
 - RESTCONF API integration (dual-layer validation)
 - Flask compliance dashboard (web UI)
+- scheduled compliance jobs
 - JSON reporting
 - HTML dashboard generation
 - idempotent automation logic
@@ -1262,6 +1263,78 @@ When sandbox authentication fails:
 
 ---
 
+# PHASE 17 — Scheduled Compliance Jobs
+
+## Objective
+
+Automate compliance checks on a configurable schedule so the
+framework runs continuously without manual intervention —
+like a real enterprise NetDevOps system.
+
+## Features Implemented
+
+- `scripts/scheduler.py` — schedule-based compliance runner
+- `config/scheduler_config.yml` — configurable interval, mode, parallel
+- Runs immediately on startup then on every interval
+- Calls `main.py` as subprocess — reuses entire pipeline
+- Job counter tracks how many runs completed
+- Next run time logged after every job
+- Clean CTRL+C shutdown with summary
+- Separate `[STARTUP]` execution ID for scheduler vs `[EXEC-...]` for jobs
+
+## Configuration
+
+```yaml
+# config/scheduler_config.yml
+schedule:
+  interval: 60      # run every 60 minutes
+  mode: dry-run     # dry-run or live
+  parallel: false   # sequential or parallel
+```
+
+## How to Run
+
+```bash
+# From project root
+python scripts/scheduler.py
+
+# Stop with CTRL+C
+```
+
+## Example Output
+
+```bash
+2026-08-20 13:34:14 | INFO | [STARTUP] | NetDevOps Compliance Scheduler — Starting
+2026-08-20 13:34:14 | INFO | [STARTUP] | Interval : every 60 minute(s)
+2026-08-20 13:34:14 | INFO | [STARTUP] | Mode     : DRY-RUN
+2026-08-20 13:34:14 | INFO | [STARTUP] | Parallel : False
+2026-08-20 13:34:14 | INFO | [STARTUP] | Scheduled Job #1 — DRY-RUN | 2026-08-20 13:34:14
+2026-08-20 13:34:14 | INFO | [EXEC-20260820-133414] | NetDevOps Framework — DRY-RUN | SEQUENTIAL
+2026-08-20 13:34:33 | INFO | [EXEC-20260820-133414] | NetDevOps Framework — Execution Complete
+2026-08-20 13:34:33 | INFO | [STARTUP] | Job #1 completed successfully ✔
+2026-08-20 13:34:33 | INFO | [STARTUP] | Scheduler active — running every 60 minute(s)
+2026-08-20 13:34:33 | INFO | [STARTUP] | Press CTRL+C to stop
+```
+
+## Updated CI Pipeline
+
+`.github/workflows/netdevops-ci.yml` expanded to cover all files:
+
+| Step | Files Checked |
+|---|---|
+| Syntax Check — scripts/ | `main.py`, `load_inventory.py`, `logger.py`, `scheduler.py` |
+| Syntax Check — scripts/core/ | All 9 core modules |
+| Syntax Check — dashboard/ | `app.py` |
+| Validate YAML Inventory | `devices.yml`, `interfaces.yml`, `scheduler_config.yml` |
+| Validate Jinja2 Template | `interface.j2` |
+
+## Key Engineering Principle Applied
+
+> Production automation never waits for a human to press a button.
+> The scheduler turns your framework into a continuous compliance engine.
+
+---
+
 # 📊 Current Capabilities
 
 ## Successfully Implemented
@@ -1284,11 +1357,12 @@ When sandbox authentication fails:
 - Parallel multi-device orchestration (`--parallel` flag)
 - Device labeling for output file separation
 - Flask compliance dashboard (`dashboard/`)
+- Scheduled compliance jobs (`scripts/scheduler.py`)
 - HTML dashboard generation (with RESTCONF validation section)
 - JSON structured reporting (includes RESTCONF results)
 - Local backup generation
 - Idempotent re-runs (proven in single and multi-device)
-- GitHub Actions CI/CD pipeline
+- GitHub Actions CI/CD pipeline (expanded)
 
 ---
 
@@ -1314,6 +1388,8 @@ python-netmiko-devnet-cisco/
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V5.py
 │       ├── FULL_CONSOLIDATED_NETDEVOPS_SCRIPT_V6.py
 │       └── NETDEVOPS_DOCUMENTATION_V1.md
+├── config/
+│   └── scheduler_config.yml
 ├── dashboard/
 │   ├── app.py
 │   ├── templates/
@@ -1355,6 +1431,7 @@ python-netmiko-devnet-cisco/
 │   │   └── restconf.py
 │   ├── load_inventory.py
 │   ├── logger.py
+│   ├── scheduler.py
 │   └── main.py
 ├── templates/
 │   └── interface.j2
@@ -1395,9 +1472,9 @@ This project follows core NetDevOps engineering principles:
 
 - Single vendor focus (Cisco IOS-XE)
 - No database-backed inventory yet
-- No scheduled compliance jobs yet
 - `tests/` directory empty — no automated test coverage yet
 - Flask dashboard runs in development mode only
+- Scheduler runs as foreground process only (no daemon/service)
 - DevNet Always-On sandbox is a shared resource — other users
   can reset device config at any time causing unexpected DRIFT
 
@@ -1407,20 +1484,20 @@ This project follows core NetDevOps engineering principles:
 
 ## Short-Term
 
-- PyATS/Genie validation
-- Scheduled compliance jobs
+- Flask dashboard production deployment (gunicorn/nginx)
+- Scheduler as background service (systemd / Windows service)
 
 ## Mid-Term
 
 - CSV/Excel inventory support
 - Configuration archival
-- Flask dashboard production deployment (gunicorn/nginx)
+- Multi-vendor support
 
 ## Long-Term
 
 - Intent-based networking
 - Real-time compliance engine
-- Multi-vendor support
+- PyATS/Genie validation (Linux/Mac only)
 
 ---
 
