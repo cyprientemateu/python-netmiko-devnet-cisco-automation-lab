@@ -1,6 +1,6 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, RESTCONF API integration, structured logging, config archival, dry-run mode, modular `core/` architecture, sequential + parallel multi-device orchestration, Flask compliance dashboard, and scheduled compliance jobs.
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, RESTCONF API integration, structured logging, config archival, dry-run mode, modular `core/` architecture, sequential + parallel multi-device orchestration, Flask compliance dashboard with Gunicorn production deployment, and scheduled compliance jobs.
 
 ## 🧭 Project Overview
 
@@ -53,6 +53,7 @@ It has evolved from simple SSH command execution into a full data-driven automat
 - Live log viewer with color-coded WARNING/ERROR lines
 - Run Dry-Run or Live directly from browser
 - Full execution history table
+- **Gunicorn production deployment** — 4 workers, debug off, WSL
 
 ### ✅ Reporting System
 - JSON structured reports
@@ -144,6 +145,7 @@ python-netmiko-devnet-cisco/
 │   └── scheduler_config.yml
 ├── dashboard/
 │   ├── app.py
+│   ├── wsgi.py
 │   ├── templates/
 │   │   ├── base.html
 │   │   ├── index.html
@@ -293,6 +295,14 @@ Fix:
 
 ## 📊 Example Output
 
+### Flask Dashboard — Gunicorn Production
+
+📄 [View Dashboard — Gunicorn Production Overview](images/screenshoots/FLASK_DASHBOARD_GUNICORN_PRODUCTION.png)
+
+📄 [View Dashboard — Gunicorn Execution History](images/screenshoots/FLASK_DASHBOARD_GUNICORN_HISTORY.png)
+
+---
+
 ### Flask Dashboard — Overview Page
 
 📄 [View Dashboard Overview — Run 1](images/screenshoots/FLASK_DASHBOARD_OVERVIEW.png)
@@ -410,11 +420,10 @@ Fix:
 
 ## 🚀 Future Improvements
 
-- Flask dashboard production deployment (gunicorn/nginx)
-- Scheduler as background service
+- Scheduler as background service (systemd)
+- PyATS/Genie validation (via WSL)
 - Multi-vendor support
 - Intent-based networking
-- PyATS/Genie validation (Linux/Mac only)
 
 ---
 

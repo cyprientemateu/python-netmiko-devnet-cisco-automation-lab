@@ -1196,6 +1196,12 @@ http://127.0.0.1:5000
 
 📄 [View Logs Page — Run 2](../images/screenshoots/FLASK_DASHBOARD_LOGS_2.png)
 
+### Gunicorn Production Deployment
+
+📄 [View Dashboard — Gunicorn Production Overview](../images/screenshoots/FLASK_DASHBOARD_GUNICORN_PRODUCTION.png)
+
+📄 [View Dashboard — Gunicorn Execution History](../images/screenshoots/FLASK_DASHBOARD_GUNICORN_HISTORY.png)
+
 ## Key Engineering Principle Applied
 
 > Compliance data is only useful if it's visible.
@@ -1335,6 +1341,66 @@ python scripts/scheduler.py
 
 ---
 
+---
+
+# PHASE 18 — Gunicorn Production Deployment (WSL)
+
+## Objective
+
+Replace Flask development server with Gunicorn — a production-grade
+WSGI server — running on WSL (Ubuntu). This unlocks multi-worker
+concurrent request handling and disables the insecure debug mode.
+
+## Features Implemented
+
+- `dashboard/wsgi.py` — production WSGI entry point
+- `dashboard/app.py` — `debug=False` for production
+- Gunicorn installed on WSL Ubuntu
+- 4 concurrent workers
+- Accessible on local network at `0.0.0.0:5000`
+
+## How to Run
+
+```bash
+# From project root in WSL
+gunicorn --workers 4 --bind 0.0.0.0:5000 "dashboard.wsgi:app"
+```
+
+## Production vs Development Comparison
+
+| Feature | Dev Server | Gunicorn |
+|---|---|---|
+| Workers | 1 | 4 |
+| Debug mode | On | Off |
+| Network accessible | No | Yes |
+| Production safe | No | Yes |
+| Platform | Windows | WSL/Linux |
+
+## Example Output
+
+```bash
+[INFO] Starting gunicorn 26.2.0
+[INFO] Listening at: http://0.0.0.0:5000 (8638)
+[INFO] Using worker: sync
+[INFO] Booting worker with pid: 8639
+[INFO] Booting worker with pid: 8640
+[INFO] Booting worker with pid: 8641
+[INFO] Booting worker with pid: 8642
+```
+
+## Screenshots
+
+📄 [View Dashboard — Gunicorn Production Overview](../images/screenshoots/FLASK_DASHBOARD_GUNICORN_PRODUCTION.png)
+
+📄 [View Dashboard — Gunicorn Execution History](../images/screenshoots/FLASK_DASHBOARD_GUNICORN_HISTORY.png)
+
+## Key Engineering Principle Applied
+
+> A development server is for building. A production server is for running.
+> Gunicorn handles concurrent requests safely — the dev server cannot.
+
+---
+
 # 📊 Current Capabilities
 
 ## Successfully Implemented
@@ -1357,6 +1423,7 @@ python scripts/scheduler.py
 - Parallel multi-device orchestration (`--parallel` flag)
 - Device labeling for output file separation
 - Flask compliance dashboard (`dashboard/`)
+- Gunicorn production deployment (WSL — 4 workers, debug off)
 - Scheduled compliance jobs (`scripts/scheduler.py`)
 - HTML dashboard generation (with RESTCONF validation section)
 - JSON structured reporting (includes RESTCONF results)
@@ -1392,6 +1459,7 @@ python-netmiko-devnet-cisco/
 │   └── scheduler_config.yml
 ├── dashboard/
 │   ├── app.py
+│   ├── wsgi.py
 │   ├── templates/
 │   │   ├── base.html
 │   │   ├── index.html
@@ -1473,7 +1541,6 @@ This project follows core NetDevOps engineering principles:
 - Single vendor focus (Cisco IOS-XE)
 - No database-backed inventory yet
 - `tests/` directory empty — no automated test coverage yet
-- Flask dashboard runs in development mode only
 - Scheduler runs as foreground process only (no daemon/service)
 - DevNet Always-On sandbox is a shared resource — other users
   can reset device config at any time causing unexpected DRIFT
@@ -1484,8 +1551,8 @@ This project follows core NetDevOps engineering principles:
 
 ## Short-Term
 
-- Flask dashboard production deployment (gunicorn/nginx)
-- Scheduler as background service (systemd / Windows service)
+- Scheduler as background service (systemd)
+- PyATS/Genie validation (Linux/Mac via WSL)
 
 ## Mid-Term
 
@@ -1497,7 +1564,6 @@ This project follows core NetDevOps engineering principles:
 
 - Intent-based networking
 - Real-time compliance engine
-- PyATS/Genie validation (Linux/Mac only)
 
 ---
 
