@@ -94,7 +94,7 @@ Automate interface configuration using Python dictionaries.
 - Layer-2 and Layer-3 support
 - Routed interface automation
 - Validation engine
-- Rollback logic
+- Rollback logic *(legacy — present in `archive/legacy_scripts/` only; not carried into the modular `core/` framework)*
 - Local backups
 
 ## Initial Desired State Model
@@ -1362,9 +1362,11 @@ concurrent request handling and disables the insecure debug mode.
 ## How to Run
 
 ```bash
-# From project root in WSL
-gunicorn --workers 4 --bind 0.0.0.0:5000 "dashboard.wsgi:app"
+# From project root in WSL (bind to localhost for safety)
+gunicorn --workers 4 --bind 127.0.0.1:5000 "dashboard.wsgi:app"
 ```
+
+> **Security note:** `POST /run` triggers live config pushes with no authentication. Bind to `127.0.0.1` (localhost only). Do not expose to a network without adding auth middleware.
 
 ## Production vs Development Comparison
 
@@ -1373,7 +1375,7 @@ gunicorn --workers 4 --bind 0.0.0.0:5000 "dashboard.wsgi:app"
 | Workers | 1 | 4 |
 | Debug mode | On | Off |
 | Network accessible | No | Yes |
-| Production safe | No | Yes |
+| Production safe | No | Safer than dev server; not internet-safe without auth |
 | Platform | Windows | WSL/Linux |
 
 ## Example Output
@@ -1541,6 +1543,8 @@ This project follows core NetDevOps engineering principles:
 - Single vendor focus (Cisco IOS-XE)
 - No database-backed inventory yet
 - `tests/` directory empty — no automated test coverage yet
+- RESTCONF SSL verification disabled (`verify=False`) — DevNet sandbox uses self-signed certs; production use requires valid certs
+- `POST /run` dashboard endpoint has no authentication — can trigger live config pushes; Gunicorn must be bound to `127.0.0.1:5000` (localhost only)
 - Scheduler runs as foreground process only (no daemon/service)
 - DevNet Always-On sandbox is a shared resource — other users
   can reset device config at any time causing unexpected DRIFT
@@ -1557,7 +1561,6 @@ This project follows core NetDevOps engineering principles:
 ## Mid-Term
 
 - CSV/Excel inventory support
-- Configuration archival
 - Multi-vendor support
 
 ## Long-Term

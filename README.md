@@ -1,6 +1,9 @@
 # 📘 🚀 NetDevOps Automation Framework
 
-Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, RESTCONF API integration, structured logging, config archival, dry-run mode, modular `core/` architecture, sequential + parallel multi-device orchestration, Flask compliance dashboard with Gunicorn production deployment, and scheduled compliance jobs.
+![CI](https://github.com/cyprientemateu/python-netmiko-devnet-cisco/actions/workflows/netdevops-ci.yml/badge.svg)
+> **Status:** Active — Phase 18 complete. Production-style WSGI deployment (Gunicorn, WSL). See [Current Limitations](#-current-limitations) for known gaps.
+
+Production-style Cisco IOS-XE network automation using Python, Netmiko, YAML inventory, Pydantic schema validation, Jinja2 templating, compliance validation, drift detection, remediation, RESTCONF API integration, structured logging, config archival, dry-run mode, modular `core/` architecture, sequential + parallel multi-device orchestration, Flask compliance dashboard with production-style WSGI deployment (Gunicorn, local/WSL), and scheduled compliance jobs.
 
 ## 🧭 Project Overview
 
@@ -34,9 +37,10 @@ It has evolved from simple SSH command execution into a full data-driven automat
 - YAML inventory-driven execution
 
 ### ✅ Safety & Reliability
-- Pre-change configuration backup
+- Pre-change configuration backup (for manual restore if needed)
 - Post-change validation
-- Automatic rollback support
+- Pydantic schema validation before any connection
+- Dry-run mode (`--dry-run`) — validate without pushing
 - Idempotent execution (safe re-runs, proven)
 
 ### ✅ Compliance Engine
@@ -53,7 +57,7 @@ It has evolved from simple SSH command execution into a full data-driven automat
 - Live log viewer with color-coded WARNING/ERROR lines
 - Run Dry-Run or Live directly from browser
 - Full execution history table
-- **Gunicorn production deployment** — 4 workers, debug off, WSL
+- **Production-style WSGI deployment (local/WSL)** — Gunicorn, 4 workers, debug off
 
 ### ✅ Reporting System
 - JSON structured reports
@@ -65,16 +69,9 @@ It has evolved from simple SSH command execution into a full data-driven automat
 - Structured logging via Python `logging` module
 - Rotating file handler — 5MB max, 5 backups
 - Execution ID (`EXEC-YYYYMMDD-HHMMSS`) on every log line
-- Per-device log files (`logs/{device_host}.log`)
+- Per-device log files (`logs/device-1.log`, `logs/device-2.log` — label-based)
 - Persistent audit trail in `logs/netdevops.log`
 - INFO / WARNING / ERROR log levels
-
-### ✅ Safety & Validation
-- Pydantic schema validation before any connection
-- Pre-change configuration backup
-- Post-change validation
-- Dry-run mode (`--dry-run`) — validate without pushing
-- Idempotent execution (safe re-runs, proven)
 
 ---
 
@@ -87,19 +84,23 @@ load_inventory.py
   ├── load_devices()     → inventory/devices.yml
   └── load_interfaces()  → inventory/interfaces.yml
         ↓
-Backup Running Config     → backups/
+core/validator.py         → Pydantic schema check (abort on error)
         ↓
-Render via Jinja2         → configs/generated/
+core/orchestrator.py      → sequential or --parallel ThreadPoolExecutor
         ↓
-Extract Interface Blocks
+core/backup.py            → backups/
         ↓
-Subset Compliance Check
+core/rendering.py         → configs/generated/ (Jinja2)
         ↓
-Remediate on DRIFT only   ← skipped in --dry-run
+core/compliance.py        → extract interface block → subset check
         ↓
-JSON + HTML Reports       → reports/
+core/remediation.py       → push full desired config (skipped in --dry-run)
         ↓
-Structured Logging        → logs/netdevops.log
+core/restconf.py          → HTTPS RESTCONF dual-layer verification
+        ↓
+core/reporting.py         → reports/json/ + reports/html/
+        ↓
+Structured Logging        → logs/netdevops.log + logs/device-N.log
 ```
 
 ---
@@ -107,15 +108,18 @@ Structured Logging        → logs/netdevops.log
 ## 🧰 Technologies Used
 
 - Python 3.11
-- Netmiko
-- Cisco IOS-XE (DevNet Sandbox)
-- Jinja2
-- PyYAML
-- python-dotenv
-- TextFSM
+- Netmiko (SSH automation)
+- Cisco IOS-XE (DevNet Always-On Sandbox)
+- Jinja2 (configuration templating)
+- PyYAML (inventory parsing)
+- Pydantic (inventory schema validation)
+- python-dotenv (credential injection)
+- requests (RESTCONF HTTPS API)
+- concurrent.futures (parallel multi-device execution)
+- Flask (compliance dashboard web UI)
+- Gunicorn (production WSGI server)
 - HTML + JSON reporting
-- GitHub Actions (CI/CD)
-- PowerShell
+- GitHub Actions (CI: syntax, YAML and template validation)
 
 ---
 
@@ -153,7 +157,7 @@ python-netmiko-devnet-cisco/
 │   │   └── logs.html
 │   └── static/
 │       └── style.css
-├── backups/
+├── backups/                          ← local only, gitignored
 ├── configs/
 │   └── generated/
 ├── docs/
@@ -164,9 +168,9 @@ python-netmiko-devnet-cisco/
 ├── inventory/
 │   ├── devices.yml
 │   └── interfaces.yml
-├── logs/
+├── logs/                             ← local only, gitignored
 │   └── netdevops.log
-├── reports/
+├── reports/                          ← local only, gitignored
 │   ├── html/
 │   └── json/
 ├── scripts/
@@ -194,7 +198,7 @@ python-netmiko-devnet-cisco/
 │
 ├── README.md
 ├── requirements.txt
-├── .env
+├── .env                              ← local only, gitignored (credentials)
 ├── .gitignore
 └── LICENSE
 ```
@@ -295,7 +299,7 @@ Fix:
 
 ## 📊 Example Output
 
-### Flask Dashboard — Gunicorn Production
+### Flask Dashboard — Production-Style WSGI Deployment (Gunicorn)
 
 📄 [View Dashboard — Gunicorn Production Overview](images/screenshoots/FLASK_DASHBOARD_GUNICORN_PRODUCTION.png)
 
@@ -415,6 +419,17 @@ Fix:
 - Use structured reporting
 - Externalize inventory and credentials
 - Separate concerns (inventory, templating, execution)
+
+---
+
+## ⚠️ Current Limitations
+
+- `tests/` directory is empty — no automated test coverage yet
+- RESTCONF SSL verification is disabled (`verify=False`) — DevNet sandbox uses self-signed certs; **do not use in production without valid certs**
+- `POST /run` endpoint on the Flask dashboard triggers live config pushes with **no authentication** — restrict Gunicorn to `127.0.0.1:5000` (localhost only); do not expose to a network without adding auth
+- Gunicorn should be bound to `127.0.0.1:5000` for local/WSL use: `gunicorn --workers 4 --bind 127.0.0.1:5000 "dashboard.wsgi:app"`
+- Scheduler (`scripts/scheduler.py`) runs as a foreground process only — no systemd daemon support yet
+- DevNet Always-On sandbox is a shared resource; other users can reset device config at any time, causing unexpected DRIFT on next compliance run
 
 ---
 
